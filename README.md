@@ -23,7 +23,7 @@ Each tool lives in its own directory with a short human README (and often a `SKI
 |------|-------------|
 | [**agentic-linux demo**](demos/agentic-linux/) | Facilitator runbook: live demo of agentic CLI AI for friends who only know browser chatbots — prompts, talking points, safety notes. |
 | [**`/securityaudit`**](skills/securityaudit/) | Slash skill: **report-only** desktop audit against `security/items`; remediate only when you ask, with **per-item** approval. Human docs: [security/audit](security/audit/). |
-| [**safesudo**](security/safesudo/) | Lets agents elevate via **polkit** (`pkexec`) only; blocks classic elevators in the harness; optional **AUTH_ADMIN_KEEP** rule so back-to-back `pkexec` does not re-prompt every time. |
+| [**safesudo**](security/safesudo/) | Agents elevate via **polkit** (`pkexec`) only; blocks classic elevators; optional **session stamp** so keep survives new agent shells (~5 min), not just same-process `AUTH_ADMIN_KEEP`. |
 | [**security items**](security/items/) | The checklist itself (browser defaults/plugins, Flatpak, firewall, NTP, …) — `ITEM.md` + optional `check.sh` per control. |
 
 More tools will land under other folders as we share them. Prefer **one concern per directory**, add a row here, and keep install details in that tool’s own README.

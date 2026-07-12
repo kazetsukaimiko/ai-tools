@@ -2,17 +2,17 @@
 name: safesudo
 description: >
   Force privileged shell work through pkexec/polkit only. Block sudo, su, doas,
-  kdesu, and other parallel elevation tools; leave consent and auth retention to
-  polkit. Always prefer pkexec first (hook deny may cancel the turn). Use when
-  installing the elev-gate hook, configuring agent elevation policy, the user
-  mentions sudo/pkexec/polkit/safesudo, or any task needs root.
+  kdesu, and other parallel elevation tools. Optional session stamp so agents
+  are not re-prompted every tool call (AUTH_ADMIN_KEEP alone is per-process).
+  Use when installing elev-gate, session keep, configuring agent elevation,
+  the user mentions sudo/pkexec/polkit/safesudo, or any task needs root.
 compatibility: >
   Linux with polkit recommended (pkexec + a session authentication agent such as
   polkit-kde-agent or polkit-gnome-authentication-agent). Grok Build PreToolUse
   hooks; Claude Code hooks are analogous. Requires bash, python3, and a hook runner.
 license: MIT
 metadata:
-  short-description: "pkexec-only elevation; block sudo/su/doas"
+  short-description: "pkexec-only elevation; session stamp keep; block sudo/su/doas"
   author: ai-tools contributors
 ---
 
@@ -24,24 +24,25 @@ metadata:
 
 | Layer | Owns |
 |-------|------|
-| Agent harness (this skill + hook) | API hygiene: only `pkexec` for elevation; hard-deny parallel tools |
-| polkit / `pkexec` | Consent, password/biometrics, auth retention, future remote agents |
-| OS policy (optional) | Narrow custom action IDs, keep-authorization, allowlists |
+| Agent harness (this skill + hook) | API hygiene: only `pkexec` for elevation; hard-deny parallel tools; **run session-keep-stamp** when installed |
+| polkit / `pkexec` | Consent, password/biometrics, dialog surface (desktop or future remote agent) |
+| OS policy (optional) | Session-stamp rule, custom action IDs, allowlists |
 
-**Do not** invent a second Yes/No UI (kdialog, custom TUI gates) for elevation if polkit already authenticates. Re-prompting retention, multi-device approval, and action metadata belong in polkit — not in the coding agent.
+**Do not** invent a second Yes/No UI (kdialog, custom TUI gates) for elevation if polkit already authenticates. Consent stays with polkit; safesudo only chooses the elevation *channel* and optional keep policy.
 
 **Why**
 
 - Parallel tools (`sudo`, `su`, …) bypass polkit and any future mobile authentication agent.
-- Auth retention is a polkit feature; reimplementing it in the agent is worse UX and weaker security.
-- Long-running agent work should not block on an agent-specific dialog the user never sees on their phone. Route privilege through polkit so a desktop *or* remote authentication agent can answer.
+- Stock polkit keep is **process-scoped** — agents need an extra **session stamp** for cross-turn keep (see [Auth retention](#auth-retention-optional-polkit-overlay)).
+- Long-running agent work should not re-prompt on every shell spawn if the operator already authorized recently.
 
 **Agent rule of thumb**
 
-1. **Use `pkexec` on the first attempt** whenever you need root or another user (or a polkit-aware helper with an explicit action ID). **Do not lead with `sudo`** and “fix later.”
+1. **Use `pkexec` on the first attempt** whenever you need root. **Do not lead with `sudo`** (or any blocklisted elevator).
 2. Never use tools on the blocklist below — even inside `bash -c`, scripts, or nested under `pkexec`.
-3. Prefer **narrow helpers** (`pkexec /usr/local/sbin/set-lights …`) over `pkexec bash` / open root shells when the user might walk away or approve remotely.
-4. **If** a blocklist deny still returns control to you in the same turn, rewrite to `pkexec` and re-run immediately — do not wait for the user to say “try pkexec.” Do not treat that path as reliable (see harness note below).
+3. **If session keep is installed**, every elevated batch should start with `/usr/local/lib/safesudo/session-keep-stamp` so later tool calls in the keep window need no dialog.
+4. Prefer **narrow helpers** over open root shells when the user might walk away or approve remotely.
+5. **If** a blocklist deny still returns control to you in the same turn, rewrite to `pkexec` and re-run immediately. Do not treat that path as reliable (see harness note below).
 
 ### Harness limitation (Grok Build and similar)
 
@@ -103,32 +104,60 @@ If you discover another elevation binary on a distro, add its basename to the ho
 | Custom setuid helpers invoked without the blocklist names | Allowed (OS policy) |
 | polkit action IDs via your own privileged programs | Preferred for unattended/remote |
 
-After the harness allows `pkexec`, **polkit** may prompt (desktop agent today; a custom agent could relay to another device). Cancel means denied. Temporary authorization / retention is entirely polkit’s job.
+After the harness allows `pkexec`, **polkit** may prompt (desktop agent today; a custom agent could relay to another device). Cancel means denied. **How long** that approval lasts depends on policy — see below.
 
 ## Auth retention (optional polkit overlay)
+
+### Vocabulary (easy to mix up)
+
+| Term | What it means here |
+|------|--------------------|
+| **Login / seat session** | Your desktop logind session (`subject.session`, `subject.active`, `subject.local`). The keep *rule* only applies when the caller is active + local. |
+| **Calling process** | The shell/PID that invoked `pkexec`. Agents usually spawn a **new process per tool call**. |
+| **Polkit `AUTH_ADMIN_KEEP`** | After one successful admin auth, polkit remembers it for ~5 minutes **for that same calling process only**. New PID → new prompt. |
+| **safesudo session stamp** | Root-owned file `/run/safesudo-session-keep/<uid>` with an expiry. The rule returns **`YES`** for that uid until expiry — works across **new shells / agent turns**. Not a logind session ID; “session” means “recently authorized operator,” not “one bash process.” |
 
 ### Problem
 
 Stock `org.freedesktop.policykit.exec` (generic `pkexec`) defaults to **`auth_admin`**: every `pkexec` re-prompts. There is no `pkexec --cache-password`.
 
-**`AUTH_ADMIN_KEEP` alone is not enough for agents.** Polkit stores that temporary authorization against the **calling process** (unix-process subject = PID). Coding agents spawn a **new shell per tool call**, so each message is a new PID → a new password dialog even “within five minutes.” Keep *does* work for multiple `pkexec`s **inside the same shell** (one tool call with two elevates → one prompt).
+**`AUTH_ADMIN_KEEP` alone is not enough for agents.** Polkit keys that temporary authorization to the **calling process** (unix-process subject = PID). Coding agents open a **new shell per tool call / per user message**, so each turn is a new PID → a new password dialog even “within five minutes.” Keep *does* still help for multiple `pkexec`s **inside one shell** (one tool call with two elevates → one prompt).
+
+Verified failure mode without stamp:
+
+```text
+User: "run two privileged commands"
+  → agent shell PID 1000: pkexec A && pkexec B   → 1 prompt (KEEP helps)
+
+User: "do it again"   # still < 5 minutes wall-clock
+  → agent shell PID 2000: pkexec …               → 2nd prompt (KEEP does not apply)
+```
 
 ### Solution shipped here
 
+Three layers (each builds on the previous):
+
+| Layer | Scope | Effect |
+|-------|--------|--------|
+| Stock `auth_admin` | Single `pkexec` | Prompt every time |
+| `AUTH_ADMIN_KEEP` (rule fallback) | One **process** | One prompt; further `pkexec` in that process ok ~5 min |
+| **Session stamp** (helpers + rule) | One **uid** for ~300s | After stamp, new shells / agent turns → **no** dialog until expiry |
+
 | Piece | Role |
 |-------|------|
-| [`polkit/49-pkexec-keep.rules`](polkit/49-pkexec-keep.rules) | If session stamp valid → `YES`; else `AUTH_ADMIN_KEEP` (same-process multi-`pkexec`) |
-| [`scripts/session-keep-stamp`](scripts/session-keep-stamp) | As root via `pkexec`: write `/run/safesudo-session-keep/<uid>` expiry (~300s) |
-| [`scripts/session-keep-check`](scripts/session-keep-check) | Used by the rule via `polkit.spawn`; exit 0 if stamp non-expired |
+| [`polkit/49-pkexec-keep.rules`](polkit/49-pkexec-keep.rules) | `session-keep-check` ok → `YES`; else `AUTH_ADMIN_KEEP` (active + local only) |
+| [`scripts/session-keep-stamp`](scripts/session-keep-stamp) | As root via `pkexec`: write `/run/safesudo-session-keep/<uid>` (uses `PKEXEC_UID`) |
+| [`scripts/session-keep-check`](scripts/session-keep-check) | `polkit.spawn` helper; exit 0 if stamp non-expired for that user |
 
-| Setting | Behavior |
-|---------|----------|
-| Stock defaults | `auth_admin` — re-auth every `pkexec` |
-| Overlay, no stamp yet | `AUTH_ADMIN_KEEP` — one prompt per **process**; multi-`pkexec` in that process ok |
-| Overlay, after stamp | `YES` for that **uid** until stamp expires — **cross tool-call / new shells** |
-| Keep window | ~300s (stamp helper; override with `SAFESUDO_KEEP_SECONDS` when stamping) |
+| Detail | Value |
+|--------|--------|
+| Stamp path | `/run/safesudo-session-keep/<uid>` (tmpfs; **cleared on reboot**) |
+| Default keep window | **300 seconds** from last successful stamp (`SAFESUDO_KEEP_SECONDS` overrides when stamping) |
+| Sliding window | Calling `session-keep-stamp` again **refreshes** expiry |
+| Who can create stamps | Only root; uid taken from `PKEXEC_UID` (user cannot forge a stamp for themselves as non-root) |
+| Who benefits | That uid’s later `org.freedesktop.policykit.exec` checks while stamp valid |
 
-**Security note:** a valid stamp lets *any* `pkexec` from that user proceed without a dialog until expiry. Stamp files live under `/run` (tmpfs), root-owned, keyed by uid from `PKEXEC_UID` (not forgeable by the user writing their own file). Prefer batching highly sensitive one-offs; use custom action IDs for narrower long-term policy.
+**Security note:** a valid stamp lets *any* `pkexec` as that user proceed without a dialog until expiry (active local session still required by the rule). Prefer batching highly sensitive one-offs; use custom action IDs for narrower long-term policy.
 
 ### Install (helpers + rule)
 
@@ -155,26 +184,40 @@ rm -rf /usr/local/lib/safesudo /run/safesudo-session-keep'
 
 ### Agent: always stamp when elevating (required for cross-turn keep)
 
-**Every elevated batch should run `session-keep-stamp` once as root** (after the user has authenticated for that `pkexec`). That creates/refreshes the session stamp so **later tool calls** do not re-prompt.
+**Every elevated batch should run `session-keep-stamp` once as root** inside the same `pkexec` that already got (or will get) authorization. That creates/refreshes the stamp so **later tool calls / new shells** do not re-prompt.
 
 ```bash
-# Preferred: stamp + work in one elevation (one dialog if no stamp yet)
+# Preferred: stamp + work in one elevation
+# - No stamp yet → one polkit dialog, then stamp + work
+# - Stamp still valid → no dialog (rule returns YES), stamp refreshed
 pkexec bash -c 'set -euo pipefail
 /usr/local/lib/safesudo/session-keep-stamp
 command1
 command2'
 
-# Single program still stamp first when you expect more elevates soon:
+# Single program when more elevates may follow soon:
 pkexec bash -c '/usr/local/lib/safesudo/session-keep-stamp; exec pacman -S --noconfirm foo'
 ```
 
 | Situation | Expected prompts |
 |-----------|------------------|
-| First elevate (no stamp) that runs stamp | One dialog |
-| Later `pkexec …` within ~5 min (stamp valid) | **None** |
-| Stamp expired | One dialog again (re-stamp in the same batch) |
-| Two `pkexec`s in one shell, no stamp helper | One dialog (`AUTH_ADMIN_KEEP` per process) |
-| New agent shell, only `AUTH_ADMIN_KEEP`, no stamp | **One dialog per shell** (the bug we fixed) |
+| First elevate (no stamp) that runs stamp | **One** dialog |
+| Later agent turn / new shell, stamp still valid | **None** (even bare `pkexec id`) |
+| Stamp expired | **One** dialog again (re-stamp in that batch) |
+| Two `pkexec`s in **one** shell, no stamp helper | **One** dialog (`AUTH_ADMIN_KEEP` per process) |
+| New agent shell, only `AUTH_ADMIN_KEEP`, no stamp | **One dialog per shell** — do not ship this as “5 minute keep” |
+| Reboot | Stamps gone (`/run` cleared); next elevate prompts once |
+
+#### Manual cross-shell smoke-test (after install)
+
+```bash
+# Turn A — new parent shell (expect at most one dialog)
+bash -c 'pkexec bash -c "/usr/local/lib/safesudo/session-keep-stamp; true"'
+
+# Turn B/C — different parent PIDs (expect no dialog if stamp valid)
+bash -c 'pkexec id'
+bash -c 'pkexec true'
+```
 
 Do not put blocklisted elevators inside elevated scripts.
 
@@ -214,7 +257,8 @@ In Grok: `/hooks` (or Hooks tab). You should see the PreToolUse elev-gate entry.
 |-------------------------|----------|
 | `sudo true` | Denied; reason points at `pkexec` |
 | `su -c id` | Denied |
-| `pkexec true` | Allowed by hook; polkit may prompt |
+| `pkexec true` | Allowed by hook; polkit may prompt (unless session stamp valid) |
+| Stamp + later `pkexec` in a **new** shell | First may prompt; second should not (session keep installed) |
 | `ls` | Allowed, no elevation path |
 
 ### Claude Code / other harnesses

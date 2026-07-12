@@ -43,7 +43,15 @@ Optional offline check:
 
 ### Optional: fewer password prompts (session keep)
 
-`AUTH_ADMIN_KEEP` alone only covers multiple `pkexec`s in the **same process**. Agents open a new shell per turn, so you still get a prompt every message. Install the **session stamp** helpers + rule:
+**Important:** polkit’s `AUTH_ADMIN_KEEP` is **per process** (calling PID). Agents open a **new shell every tool call**, so “remember for 5 minutes” does **not** apply across chat turns unless you install the session stamp.
+
+| Keep mechanism | Survives new agent shell? |
+|----------------|---------------------------|
+| Stock `auth_admin` | No — prompt every `pkexec` |
+| `AUTH_ADMIN_KEEP` only | No — only same PID |
+| **Session stamp** (recommended) | **Yes** — ~5 min per uid under `/run` |
+
+Install helpers + rule:
 
 ```bash
 pkexec bash -c "set -euo pipefail
@@ -55,7 +63,9 @@ install -m 644 \"$REPO/security/safesudo/polkit/49-pkexec-keep.rules\" \
                /etc/polkit-1/rules.d/49-pkexec-keep.rules"
 ```
 
-Agents should run **`session-keep-stamp` inside elevated batches** so later turns skip the dialog. Details: [`SKILL.md`](SKILL.md#auth-retention-optional-polkit-overlay).
+Agents should run **`/usr/local/lib/safesudo/session-keep-stamp` inside elevated batches** (same `pkexec` as the work). That creates/refreshes the stamp so later turns need no dialog. Reboot clears `/run` stamps.
+
+Details and cross-shell smoke-test: [`SKILL.md`](SKILL.md#auth-retention-optional-polkit-overlay).
 
 - Reload hooks if Grok is already running: `/hooks` → **`r`**
 - Point skills at this repo, or copy `security/safesudo` into `~/.grok/skills/` (or project skills)
@@ -65,8 +75,8 @@ Agents should run **`session-keep-stamp` inside elevated batches** so later turn
 | Agent tries | Expected |
 |-------------|----------|
 | Blocklisted elevator + `true` | Hook **deny**; reason mentions `pkexec` |
-| `pkexec true` | Hook **allow**; polkit may prompt; success if you approve |
-| Second `pkexec` soon after (with session stamp) | **No** dialog until stamp expires (~5 min) |
+| `pkexec true` | Hook **allow**; polkit may prompt unless stamp valid |
+| Elevate that runs `session-keep-stamp`, then later turn `pkexec id` in a **new** shell | At most **one** dialog total while stamp valid |
 | Normal non-elevated command | Unchanged |
 
 **Note:** Some harnesses **cancel the agent turn** on hook deny. Treat the blocklist as a hard stop, not a “retry after deny” workflow — agents should lead with `pkexec` when elevation is needed. See `SKILL.md`.
