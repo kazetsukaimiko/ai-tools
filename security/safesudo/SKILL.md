@@ -2,10 +2,10 @@
 name: safesudo
 description: >
   Force privileged shell work through pkexec/polkit only. Block sudo, su, doas,
-  kdesu, and other parallel elevation tools. Optional session stamp so agents
-  are not re-prompted every tool call (AUTH_ADMIN_KEEP alone is per-process).
-  Use when installing elev-gate, session keep, configuring agent elevation,
-  the user mentions sudo/pkexec/polkit/safesudo, or any task needs root.
+  kdesu, and other parallel elevation tools. Install always includes elev-gate
+  plus pkexec-only memory/rules (install.sh / install-memory.sh). Optional
+  session stamp for cross-turn keep. Use when installing safesudo, elev-gate,
+  session keep, or any task needs root / mentions sudo/pkexec/polkit.
 compatibility: >
   Linux with polkit recommended (pkexec + a session authentication agent such as
   polkit-kde-agent or polkit-gnome-authentication-agent). Grok Build PreToolUse
@@ -221,49 +221,84 @@ bash -c 'pkexec true'
 
 Do not put blocklisted elevators inside elevated scripts.
 
-## Install the Grok PreToolUse hook
+## Install (required: hook + memory)
 
-The hook enforces the blocklist even under always-approve / YOLO modes (hooks run before permission bypass).
+**Installing safesudo means installing both the elev-gate hook and the pkexec-only memory/rules.** The hook blocks banned elevators at runtime; the memory/rules teach the agent to **never attempt them** in the first place (and to prefer `pkexec` + session stamp).
 
-### 1. Copy files into the global hooks directory
+### One-shot installer (recommended)
 
 ```bash
 REPO="${REPO:-$HOME/workspace/ai-tools}"   # path to this clone — adjust locally
+"$REPO/security/safesudo/scripts/install.sh"
+# optional session keep (polkit dialog once):
+# "$REPO/security/safesudo/scripts/install.sh" --with-session-keep
+```
+
+`install.sh` always:
+
+1. Copies **elev-gate** into `~/.grok/hooks/`
+2. Runs **`install-memory.sh`** (pkexec-only memory + global rules)
+
+### What `install-memory.sh` installs
+
+| Target | Role |
+|--------|------|
+| [`memory/pkexec-only.md`](memory/pkexec-only.md) → `~/.grok/memory/safesudo-pkexec-only.md` | Grok global memory (searchable when memory is enabled) |
+| same → `~/.claude/memory/safesudo-pkexec-only.md` | Claude Code memory file |
+| Managed section in `~/.grok/AGENTS.md` | Always-on Grok global rules (works even if memory is off) |
+| Managed section in `~/.claude/CLAUDE.md` | Always-on Claude global instructions |
+| Index line in `~/.grok/memory/MEMORY.md` | Pointer to the memory file |
+
+Markers: `<!-- safesudo:pkexec-only:begin -->` … `<!-- safesudo:pkexec-only:end -->` so re-running install **updates** the section instead of duplicating it.
+
+Memory-only (no hook):
+
+```bash
+"$REPO/security/safesudo/scripts/install-memory.sh"
+```
+
+### Manual hook copy (if not using install.sh)
+
+```bash
+REPO="${REPO:-$HOME/workspace/ai-tools}"
 mkdir -p "$HOME/.grok/hooks"
 cp "$REPO/security/safesudo/scripts/elev-gate.sh" \
    "$REPO/security/safesudo/scripts/elev-gate.py" \
    "$HOME/.grok/hooks/"
 cp "$REPO/security/safesudo/elev-gate.json" "$HOME/.grok/hooks/elev-gate.json"
 chmod +x "$HOME/.grok/hooks/elev-gate.sh" "$HOME/.grok/hooks/elev-gate.py"
+"$REPO/security/safesudo/scripts/install-memory.sh"   # still required
 ```
 
-`elev-gate.json` runs `elev-gate.sh` relative to the hooks directory; the shell launcher execs `elev-gate.py` beside it. Copy **both** script files.
+Paths above are examples — adjust the clone path locally. Do not commit machine-local home paths as *required* config in this repo.
 
-Paths above are examples only — use whatever clone location you use. Do not commit machine-local paths or usernames into this repo.
-
-Optional offline check (no agent required):
+Optional offline elev-gate check:
 
 ```bash
 "$REPO/security/safesudo/scripts/selftest.sh"
 ```
 
-### 2. Confirm the hook loads
+### Confirm after install
 
-In Grok: `/hooks` (or Hooks tab). You should see the PreToolUse elev-gate entry. Reload with `r` if you copied files mid-session.
+| Check | Expected |
+|-------|----------|
+| Grok `/hooks` → elev-gate | PreToolUse entry present; reload with `r` if needed |
+| `~/.grok/memory/safesudo-pkexec-only.md` | Exists; bans sudo+friends |
+| `~/.grok/AGENTS.md` managed section | Present with safesudo markers |
+| Agent tries `sudo true` | Hook **deny**; reason points at `pkexec` |
+| Agent tries `pkexec true` | Hook allow; polkit may prompt unless session stamp valid |
 
-### 3. Smoke-test
+### Agent install instructions
 
-| Command the agent tries | Expected |
-|-------------------------|----------|
-| `sudo true` | Denied; reason points at `pkexec` |
-| `su -c id` | Denied |
-| `pkexec true` | Allowed by hook; polkit may prompt (unless session stamp valid) |
-| Stamp + later `pkexec` in a **new** shell | First may prompt; second should not (session keep installed) |
-| `ls` | Allowed, no elevation path |
+When the user asks to **install safesudo**, the agent **must**:
+
+1. Run `scripts/install.sh` (or hook copy **and** `install-memory.sh`) — **do not skip memory**.
+2. Offer optional `--with-session-keep` if they want fewer password prompts across turns.
+3. Tell them to reload hooks if a Grok session is already open.
 
 ### Claude Code / other harnesses
 
-Same script logic applies anywhere you have a **pre-shell** hook with JSON stdin and allow/deny stdout. Adjust the JSON wrapper to that product’s schema; keep `elev-gate.sh` as the policy core.
+Same elev-gate policy applies anywhere you have a **pre-shell** hook with JSON stdin and allow/deny stdout. Adjust the JSON wrapper to that product’s schema. **Still run `install-memory.sh`** so Claude’s `~/.claude/CLAUDE.md` and memory pick up pkexec-only.
 
 ## Agent instructions (when this skill is active)
 
@@ -302,6 +337,7 @@ Same script logic applies anywhere you have a **pre-shell** hook with JSON stdin
 
 ## Sharing and local overlays
 
-- Ship **portable** policy + scripts here (elev-gate, optional keep rule, docs).
+- Ship **portable** policy + scripts here (elev-gate, memory template, optional keep rule, installers, docs).
+- Installed memory/rules under `$HOME` are local state (generated by `install-memory.sh`); do not commit personal home paths into this repo.
 - Keep **host-only** allowlists, private action IDs, and authentication-agent config on the machine or in a private ops repo.
 - See the repository root README for the no-PII / no machine-specific secrets policy.

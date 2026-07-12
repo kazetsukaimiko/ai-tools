@@ -6,11 +6,12 @@ Human-facing overview. Agent policy, blocklist, and deeper design notes live in 
 
 Coding agents often reach for classic privilege tools when they need to install packages or change system files. That bypasses **polkit**, mixes poorly with desktop auth, and makes it hard to extend consent later (e.g. approve from another device).
 
-**safesudo** does three related things:
+**safesudo** does four related things:
 
 1. **Hook** — blocks agent shell use of common elevators (`sudo`, `su`, `doas`, `kdesu`, `run0`, …).
-2. **Skill** — teaches the agent to use **`pkexec`** instead, so **you** approve elevation via your normal polkit dialog (password / fingerprint). Auth retention stays with polkit.
-3. **Optional session keep** — stock `AUTH_ADMIN_KEEP` is **per process**, so agents re-prompt every tool call. safesudo adds a **session stamp** (`session-keep-stamp` / `session-keep-check` + [`polkit/49-pkexec-keep.rules`](polkit/49-pkexec-keep.rules)) so one auth covers ~5 minutes across new shells.
+2. **Memory + global rules** (installed with the skill) — standing “pkexec only” policy in Grok/Claude memory and `AGENTS.md` / `CLAUDE.md` so agents do not *try* banned elevators.
+3. **Skill** — teaches batching, session stamp, and install flow.
+4. **Optional session keep** — stock `AUTH_ADMIN_KEEP` is **per process**; the session stamp covers ~5 minutes across new agent shells.
 
 You keep control of root-shaped actions; the agent does not get a separate “type password into the chat” path.
 
@@ -27,15 +28,22 @@ From a clone of [ai-tools](https://github.com/kazetsukaimiko/ai-tools):
 
 ```bash
 export REPO="$PWD"   # root of the ai-tools clone — adjust if needed
-mkdir -p "$HOME/.grok/hooks"
-cp "$REPO/security/safesudo/scripts/elev-gate.sh" \
-   "$REPO/security/safesudo/scripts/elev-gate.py" \
-   "$HOME/.grok/hooks/"
-cp "$REPO/security/safesudo/elev-gate.json" "$HOME/.grok/hooks/elev-gate.json"
-chmod +x "$HOME/.grok/hooks/elev-gate.sh" "$HOME/.grok/hooks/elev-gate.py"
+# Required: elev-gate hook + pkexec-only memory/rules
+"$REPO/security/safesudo/scripts/install.sh"
+# Optional: session keep (one polkit password for install)
+# "$REPO/security/safesudo/scripts/install.sh" --with-session-keep
 ```
 
-Optional offline check:
+That always installs:
+
+1. **elev-gate** → `~/.grok/hooks/`
+2. **Memory + rules** via `install-memory.sh`:
+   - `~/.grok/memory/safesudo-pkexec-only.md` and `~/.claude/memory/safesudo-pkexec-only.md`
+   - Managed “pkexec only” section in `~/.grok/AGENTS.md` and `~/.claude/CLAUDE.md`
+
+**Do not install the hook without the memory** — agents will keep defaulting to `sudo` until the standing rule is on disk.
+
+Optional offline elev-gate check:
 
 ```bash
 "$REPO/security/safesudo/scripts/selftest.sh"
@@ -86,6 +94,9 @@ Details and cross-shell smoke-test: [`SKILL.md`](SKILL.md#auth-retention-optiona
 | File | Role |
 |------|------|
 | [`SKILL.md`](SKILL.md) | Strategy + agent instructions |
+| [`memory/pkexec-only.md`](memory/pkexec-only.md) | Standing memory: ban sudo+friends; use pkexec |
+| [`scripts/install.sh`](scripts/install.sh) | Full install: hook + memory (+ optional session keep) |
+| [`scripts/install-memory.sh`](scripts/install-memory.sh) | Memory + AGENTS.md / CLAUDE.md only |
 | [`elev-gate.json`](elev-gate.json) | Grok PreToolUse registration |
 | [`scripts/elev-gate.py`](scripts/elev-gate.py) | Blocklist policy |
 | [`scripts/elev-gate.sh`](scripts/elev-gate.sh) | Hook launcher |
