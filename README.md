@@ -1,6 +1,6 @@
 # ai-tools
 
-A grab bag of **AI-related tools** worth sharing with friends: agent skills, hooks, small helpers, and patterns that make coding agents (Grok, Claude Code, and the rest) more useful and a bit safer.
+A grab bag of **AI-related tools** worth sharing with friends: agent skills, hooks, small helpers, demos, and patterns that make coding agents (Grok, Claude Code, and the rest) more useful and a bit safer.
 
 This is not a single-purpose project. Whatever lands here should be portable, documented enough that someone else can try it, and free of personal secrets (see [policy](#repository-policy-no-secrets-no-pii-no-machine-specific-config) below).
 
@@ -15,13 +15,16 @@ git clone https://github.com/kazetsukaimiko/ai-tools.git
 # or open a chat with that folder as the workspace / skill path.
 ```
 
-Each tool lives in its own directory with a short human README plus a `SKILL.md` for agents. Ask the agent to install what you want — or follow that tool’s README yourself.
+Each tool lives in its own directory with a short human README (and often a `SKILL.md` for agents). Ask the agent to install what you want — or follow that tool’s README yourself.
 
 ## What’s here
 
 | Tool | Description |
 |------|-------------|
-| [**safesudo**](security/safesudo/) | Lets coding agents do privileged work (install packages, edit system config, etc.) through **polkit** (`pkexec`) instead of classic elevators. A hook blocks the usual alternatives so elevation stays on one path you already understand (desktop password / fingerprint dialog). |
+| [**agentic-linux demo**](demos/agentic-linux/) | Facilitator runbook: live demo of agentic CLI AI for friends who only know browser chatbots — prompts, talking points, safety notes. |
+| [**security audit**](security/audit/) | Skill + workflow to audit a Linux desktop against a shared checklist (`security/items`), highlight greenlist gaps, and fix issues one at a time with consent. |
+| [**safesudo**](security/safesudo/) | Lets agents elevate via **polkit** (`pkexec`) only; blocks classic elevators in the harness. Useful when audit fixes need root. |
+| [**security items**](security/items/) | The checklist itself (Firefox plugins, firewall, NTP, VPN/chat clients, …) — `ITEM.md` + optional `check.sh` per control. |
 
 More tools will land under other folders as we share them. Prefer **one concern per directory**, add a row here, and keep install details in that tool’s own README.
 
