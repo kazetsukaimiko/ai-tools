@@ -24,7 +24,7 @@ Each tool lives in its own directory with a short human README (and often a `SKI
 | [**agentic-linux demo**](demos/agentic-linux/) | Facilitator runbook: live demo of agentic CLI AI for friends who only know browser chatbots — prompts, talking points, safety notes. |
 | [**security audit**](security/audit/) | Skill + workflow to audit a Linux desktop against a shared checklist (`security/items`), highlight greenlist gaps, and fix issues one at a time with consent. |
 | [**safesudo**](security/safesudo/) | Lets agents elevate via **polkit** (`pkexec`) only; blocks classic elevators in the harness. Useful when audit fixes need root. |
-| [**security items**](security/items/) | The checklist itself (Firefox plugins, firewall, NTP, VPN/chat clients, …) — `ITEM.md` + optional `check.sh` per control. |
+| [**security items**](security/items/) | The checklist itself (browser defaults/plugins, firewall, NTP, VPN/chat clients, …) — `ITEM.md` + optional `check.sh` per control. |
 
 More tools will land under other folders as we share them. Prefer **one concern per directory**, add a row here, and keep install details in that tool’s own README.
 

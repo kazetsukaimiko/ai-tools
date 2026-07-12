@@ -105,8 +105,10 @@ After the report:
 - Never open unrestricted inbound “to make something work” without clear user intent.
 - Listing full rules may need elevation; summarize first.
 
-### Firefox / browser extensions
+### Browsers and extensions
 
+- **Negative recommendations only** for browser choice: flag Google Chrome / stock Chromium as default when items say so; do **not** pitch Firefox, Brave, or other brands. Ungoogled Chromium may be noted as acceptable for Chromium-based use.
+- **Firefox plugin items apply only if Firefox is installed** (system binary and/or Flatpak `org.mozilla.firefox`). If not installed → `skip` (do not fail greenlist for missing plugins on non-Firefox hosts). Leftover `~/.mozilla` profiles alone do not count as installed.
 - Prefer profile files (`extensions.json`, `addons.json`) under `~/.mozilla/firefox` and Flatpak data under `~/.var/app/org.mozilla.firefox/`.
 - If detection is inconclusive → `warn` or `skip` with UI steps (about:addons), not a false `pass`.
 

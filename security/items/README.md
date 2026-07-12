@@ -19,14 +19,17 @@ Portable checklist entries for the [security audit](../audit/) skill. Each item 
 
 ## Layout (v1 seed)
 
-| Path | Id (see ITEM.md) |
-|------|------------------|
-| `browsers/firefox/installed/` | Firefox present |
-| `browsers/firefox/plugins/ublock_origin/` | uBlock Origin (greenlist) |
+| Path | Notes |
+|------|--------|
+| `browsers/chrome/default/` | Fail if Google Chrome / stock Chromium is the **default** (greenlist). Ungoogled Chromium OK. |
+| `browsers/firefox/plugins/ublock_origin/` | Greenlist **only if Firefox is installed**; otherwise skip |
 | `network/firewall/present/` | Host firewall stack present |
 | `network/firewall/default_deny_hint/` | Advisory default-deny posture |
 | `system/ntp/` | Clock sync / NTP |
 | `system/unattended_updates_hint/` | Automatic updates (guidance) |
 | `privacy/vpn_client_present/` | VPN client tools present |
 | `chat/e2ee_client_present/` | E2EE chat client present |
-| `mail/proton_hint/` | Proton / private mail posture (soft) |
+
+### Browser recommendation policy
+
+Checklist items make **negative** browser recommendations only (e.g. do not use Google Chrome / stock Chromium as default). They do **not** push Firefox, Brave, or other brands — except noting that **Ungoogled Chromium** is acceptable when a Chromium-based browser is needed.
