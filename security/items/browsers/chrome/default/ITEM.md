@@ -7,6 +7,7 @@ greenlist: true
 platforms: [linux]
 install_vectors: [google-chrome, chromium, flatpak]
 requires_elevation_to_fix: false
+agent_remediation: "guide default-browser change; user confirms target (no brand push except ungoogled OK)"
 check: check.sh
 ---
 

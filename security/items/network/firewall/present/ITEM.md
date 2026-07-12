@@ -7,6 +7,7 @@ greenlist: true
 platforms: [linux]
 install_vectors: [firewalld, ufw, nftables, iptables]
 requires_elevation_to_fix: true
+agent_remediation: "pkexec enable/configure firewall stack after user chooses policy; no surprise rules"
 check: check.sh
 ---
 

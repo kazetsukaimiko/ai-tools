@@ -26,7 +26,20 @@ YAML between `---` fences at the top of `ITEM.md`:
 | `platforms` | no | e.g. `[linux]` |
 | `install_vectors` | no | Where the control may live, e.g. `system-firefox`, `flatpak-firefox` |
 | `requires_elevation_to_fix` | no | `true` if a typical fix needs root/polkit (default `false`) |
+| `agent_remediation` | no | Short label for audit tables: what the agent can do if asked + approved (see below) |
 | `check` | no | Relative path to a check script (default `check.sh` if that file exists) |
+
+### `agent_remediation` (optional but recommended)
+
+One short phrase used in `/securityaudit` report tables (“Agent can” column). Examples:
+
+- `pkexec install flatpak-kcm (+ portals if missing)`
+- `flatpak install --user <app_id> (version ≥ system)`
+- `guide user to AMO; cannot install extension unattended`
+- `advisory only — no automated fix`
+- `none (report-only / n/a when pass)`
+
+If omitted, the audit skill infers from **How to fix** and `requires_elevation_to_fix`.
 
 ## Body sections (recommended)
 
@@ -34,7 +47,7 @@ Use these H2 headings so agents parse consistently:
 
 1. **Why** — threat / rationale (no secrets).
 2. **How to check (agent)** — steps if there is no script, or how to interpret the script.
-3. **How to fix (agent)** — user-consent-first remediation; prefer user-level changes; use `pkexec` for elevation (see safesudo).
+3. **How to fix (agent)** — user-consent-first remediation; prefer user-level changes; use `pkexec` for elevation (see safesudo). State clearly what the agent can automate vs user UI.
 4. **Notes** — limits, false positives, Flatpak vs system.
 
 ## Optional `check.sh` contract

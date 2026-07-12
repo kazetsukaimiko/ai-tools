@@ -7,6 +7,7 @@ greenlist: false
 platforms: [linux]
 install_vectors: [flatpak, system]
 requires_elevation_to_fix: false
+agent_remediation: "flatpak install --user <app_id> per approved row (version already ≥ system)"
 check: check.sh
 ---
 

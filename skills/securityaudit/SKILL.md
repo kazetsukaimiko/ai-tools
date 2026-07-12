@@ -87,13 +87,15 @@ For each `ITEM.md` (except `_template`):
 1. Parse YAML frontmatter (`id`, `title`, `severity`, `greenlist`, `check`, …).
 2. If `check.sh` (or `check` path) exists: run it read-only; parse JSON `status` / `summary` / `evidence` / `fix_hint`.
 3. Else follow **How to check (agent)**; use `skip` when not applicable.
-4. Record: id, title, status, severity, greenlist, one-line notes.
+4. Record: id, title, status, severity, greenlist, one-line notes, and **what the agent can do** (see below).
 
 Respect install vectors (system vs Flatpak).
 
 ### 3. Report format
 
 Markdown in the conversation (default). Write a file only if asked; keep secrets/PII out of git.
+
+**Every findings table must include an “Agent can” column** — what, if anything, the agent could do **after** you ask and approve that item. This is capability, not a promise to act in report-only mode.
 
 **Order:** greenlist failures → other fails → warns → passes/skips (or group by area).
 
@@ -104,25 +106,45 @@ Host: <distro> | vectors: <brief>
 Mode: report-only (no changes made)
 
 ### Greenlist gaps
-| id | title | status | severity | notes |
-|----|-------|--------|----------|-------|
-| … | … | fail | medium | … |
+| id | title | status | severity | notes | Agent can |
+|----|-------|--------|----------|-------|-----------|
+| … | … | fail | medium | … | … |
 
 ### Other findings
-…
+| id | title | status | severity | notes | Agent can |
+|----|-------|--------|----------|-------|-----------|
+| … | … | warn | low | … | … |
 
 ### Passed / skipped
-…
+| id | title | status | notes | Agent can |
+|----|-------|--------|-------|-----------|
+| … | … | pass | … | — (ok) / n/a |
 
 ### Remediation
-No changes applied. To fix an item, name its **id** and approve after I outline steps.
+No changes applied. To fix an item, name its **id**; I will outline steps and wait for approval on that item only.
 ```
 
 Statuses: `pass` | `fail` | `warn` | `skip` | `error`.
 
 Phrase greenlist fails as: *group-recommended control not met*.
 
-For `desktop.flatpak.apps`, include the **recommend_switch** table when present (still report-only).
+For `desktop.flatpak.apps`, include the **recommend_switch** table when present, with an **Agent can** column per row (e.g. `flatpak install --user <id>` after approval).
+
+#### Filling “Agent can”
+
+Derive from ITEM.md **How to fix**, `requires_elevation_to_fix`, optional `agent_remediation` frontmatter, `fix_hint` from check JSON, and host reality. Be honest about limits.
+
+| Class | Example “Agent can” cell |
+|-------|---------------------------|
+| **Automated (user-level)** | Install Flatpak app with `flatpak install --user …` after approval |
+| **Automated (elevated)** | Install host package via `pkexec` + package manager after approval |
+| **Guided / partial** | Open steps / commands; user must click AMO / Settings UI |
+| **User-only** | Change default browser in Settings; agent cannot finish alone |
+| **Advisory** | Explain options only; no safe automated fix |
+| **Nothing** | `—` when status is `pass` / `skip` and no action needed |
+
+Always note elevation when `requires_elevation_to_fix: true` or the fix needs root/polkit (e.g. “needs pkexec after approval”).  
+Never invent a capability the agent does not have (e.g. silently changing Firefox prefs without a real method).
 
 ### 4. Remediation (only when asked + per-item approval)
 

@@ -7,6 +7,7 @@ greenlist: true
 platforms: [linux]
 install_vectors: [systemd-timesyncd, chrony, ntpd]
 requires_elevation_to_fix: true
+agent_remediation: "pkexec enable timesyncd/chrony; verify timedatectl"
 check: check.sh
 ---
 

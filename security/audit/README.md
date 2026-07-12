@@ -14,7 +14,7 @@ A **Linux desktop** security checklist your coding agent can walk through:
 
 - Discover items under `security/items/**/ITEM.md`
 - Run optional **read-only** `check.sh` scripts
-- Report pass / fail / warn / skip
+- Report pass / fail / warn / skip, with an **Agent can** column (what the AI could do if you approve that item)
 - Highlight **greenlist** gaps (group-recommended controls)
 - **Only if you ask:** remediate **one approved item at a time** (`pkexec` / [safesudo](../safesudo/) when elevation is needed)
 

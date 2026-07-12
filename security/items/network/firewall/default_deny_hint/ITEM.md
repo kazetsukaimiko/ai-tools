@@ -7,6 +7,7 @@ greenlist: false
 platforms: [linux]
 install_vectors: [firewalld, ufw, nftables]
 requires_elevation_to_fix: true
+agent_remediation: "advisory + guided review of rules; elevate only if user wants listing/changes"
 check: check.sh
 ---
 

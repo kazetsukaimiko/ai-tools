@@ -7,6 +7,7 @@ greenlist: true
 platforms: [linux]
 install_vectors: [system-firefox, flatpak-firefox]
 requires_elevation_to_fix: false
+agent_remediation: "guide AMO install in correct Firefox; cannot fully automate extension install"
 check: check.sh
 ---
 

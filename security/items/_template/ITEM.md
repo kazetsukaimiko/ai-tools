@@ -7,6 +7,7 @@ greenlist: false
 platforms: [linux]
 install_vectors: []
 requires_elevation_to_fix: false
+agent_remediation: "describe what the agent can do after approval (or advisory only)"
 check: check.sh
 ---
 

@@ -7,6 +7,7 @@ greenlist: true
 platforms: [linux]
 install_vectors: [system]
 requires_elevation_to_fix: true
+agent_remediation: "pkexec install xdg-desktop-portal, xdg-desktop-portal-kde, flatpak-kcm as needed"
 check: check.sh
 ---
 

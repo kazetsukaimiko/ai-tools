@@ -7,6 +7,7 @@ greenlist: true
 platforms: [linux]
 install_vectors: [element, signal, flatpak]
 requires_elevation_to_fix: false
+agent_remediation: "install Element or Signal (package/Flatpak) after user picks which"
 check: check.sh
 ---
 

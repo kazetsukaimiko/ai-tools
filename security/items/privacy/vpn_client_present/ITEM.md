@@ -7,6 +7,7 @@ greenlist: false
 platforms: [linux]
 install_vectors: [wireguard, networkmanager, vendor-vpn]
 requires_elevation_to_fix: true
+agent_remediation: "install user-chosen VPN client (flatpak/system) after approval; no keys in chat"
 check: check.sh
 ---
 
