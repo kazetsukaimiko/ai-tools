@@ -112,6 +112,12 @@ After the report:
 - Prefer profile files (`extensions.json`, `addons.json`) under `~/.mozilla/firefox` and Flatpak data under `~/.var/app/org.mozilla.firefox/`.
 - If detection is inconclusive → `warn` or `skip` with UI steps (about:addons), not a false `pass`.
 
+### Flatpak / install vectors
+
+- If Flatpak is missing, **skip** Flatpak migration items (do not fail the host for not having Flatpak unless a future greenlist item says otherwise).
+- For `desktop.flatpak.apps`: present the `recommend_switch` table; only suggest apps where Flatpak version **≥** system; migrate **one app at a time** with consent; prefer `flatpak install --user`.
+- For KDE: ensure portal + Permissions KCM packages when the KDE Flatpak item applies; use `pkexec` for package installs.
+
 ## Anti-patterns
 
 | Bad | Good |
