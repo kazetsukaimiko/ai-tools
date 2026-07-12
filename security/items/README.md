@@ -1,6 +1,6 @@
 # Security items
 
-Portable checklist entries for the [security audit](../audit/) skill. Each item is a small directory with an `ITEM.md` (and optional `check.sh`).
+Portable checklist entries for the [**/securityaudit**](../../skills/securityaudit/) skill (human docs: [security/audit](../audit/)). Each item is a small directory with an `ITEM.md` (and optional `check.sh`).
 
 ## Adding an item
 

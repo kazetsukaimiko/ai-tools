@@ -1,28 +1,37 @@
 ---
-name: security-audit
+name: securityaudit
 description: >
-  Audit a Linux desktop against the in-repo security/items checklist (greenlist
-  plugins, firewall, NTP, VPN/chat clients, install vectors). Report findings
-  and fix piecemeal with user consent. Use when the user asks for a security
-  audit, machine hardening check, greenlist review, degoogle checklist,
-  privacy posture review, or /security-audit.
+  Run a Linux desktop security audit against this repo's security/items checklist
+  (browsers, Flatpak migration, firewall, NTP, VPN/chat clients, greenlist gaps).
+  Report findings, then fix piecemeal with user consent. Use when the user runs
+  /securityaudit, asks for a security audit, machine hardening check, greenlist
+  review, degoogle checklist, or privacy posture review.
+when-to-use: >
+  /securityaudit; security audit; audit my machine; greenlist; desktop hardening;
+  check flatpak apps; firefox plugins; firewall posture
+argument-hint: "[report-only | fix <item-id>]"
+user-invocable: true
 compatibility: >
   Linux desktop. Optional check scripts need bash and python3. Elevated fixes
-  should use pkexec (see security/safesudo).
+  should use pkexec (see security/safesudo). Requires this ai-tools repo checkout
+  for security/items.
 license: MIT
 metadata:
-  short-description: "Linux desktop security checklist audit"
+  short-description: "Linux desktop security checklist (/securityaudit)"
+  author: ai-tools contributors
 ---
 
-# security-audit
+# /securityaudit
 
-## Goal
+Slash command and skill for a **Linux desktop** security checklist audit. Not a full CIS benchmark. Prefer **report first**, then **one fix at a time**.
 
-Help the user understand and improve **Linux desktop** security posture using portable checklist items in this repo — not a full CIS benchmark. Prefer **report first**, then **one fix at a time**.
+## On invoke
+
+1. Resolve the **ai-tools** repo root (this skill’s location is `skills/securityaudit/` → repo is two levels up; also try workspace / path the user gives).
+2. Unless the user said `fix …` only, run a **full report-only audit** first.
+3. After the report, offer piecemeal fixes (or follow `fix <item-id>` if given).
 
 ## Locate the checklist
-
-Find the `ai-tools` clone (workspace, `~/workspace/ai-tools`, or path the user gives). Items live at:
 
 ```text
 <repo>/security/items/**/ITEM.md
@@ -31,6 +40,12 @@ Find the `ai-tools` clone (workspace, `~/workspace/ai-tools`, or path the user g
 Ignore `_template/`. Schema: `<repo>/security/audit/schemas/item.md`.
 
 If the repo is missing, ask the user to clone it; do not invent a private checklist.
+
+Optional bulk mechanical run (no agent judgment):
+
+```bash
+<repo>/security/items/scripts/run-all-checks.sh
+```
 
 ## Workflow
 
@@ -46,7 +61,7 @@ Gather (read-only):
 - Obvious default browser / Firefox vectors (system binary vs `org.mozilla.firefox` Flatpak)
 - Firewall stack probe (firewalld / ufw / nft / iptables — presence and whether listing rules needs elevation)
 
-Do **not** dump full firewall rulesets into the chat unless the user asks (noisy, sometimes sensitive).
+Do **not** dump full firewall rulesets into the chat unless the user asks.
 
 ### 2. Discover and evaluate items
 
@@ -59,13 +74,13 @@ For each `ITEM.md` (except `_template`):
 3. Else follow **How to check (agent)** in the body; set status honestly (`skip` if not applicable).
 4. Record: id, title, status, severity, greenlist flag, one-line notes.
 
-Respect **install vectors**: e.g. Firefox may be system, Flatpak, or both — do not pass a plugin check for Flatpak when only system profiles were searched (or vice versa).
+Respect **install vectors** (system vs Flatpak profiles/packages).
 
 ### 3. Report format
 
-Produce a markdown report in the conversation (default). Only write a file if the user asks; keep secrets/PII out of git.
+Produce markdown in the conversation (default). Only write a file if the user asks; keep secrets/PII out of git.
 
-**Order:** greenlist failures first, then other fails, then warns, then passes/skips (or group by directory area).
+**Order:** greenlist failures first, then other fails, then warns, then passes/skips (or group by area).
 
 ```markdown
 ## Security audit summary
@@ -88,15 +103,17 @@ Statuses: `pass` | `fail` | `warn` | `skip` | `error`.
 
 For each **fail** with `greenlist: true`, phrase it as: *group-recommended control not met*.
 
+For `desktop.flatpak.apps`, include the **recommend_switch** table when present.
+
 ### 4. Piecemeal fix loop
 
 After the report:
 
-1. Ask which item to improve (or accept an explicit user priority). **One item per iteration.**
+1. Ask which item to improve (or accept `fix <item-id>` / user priority). **One item per iteration.**
 2. Follow that item’s **How to fix (agent)**. Confirm before mutations.
 3. Elevation: use **`pkexec`** first (see `security/safesudo`). Never lead with classic elevators.
 4. Re-run that item’s check; update status.
-5. Stop for bulk network/firewall/DNS changes unless the user explicitly requested that scope.
+5. No bulk network/firewall/DNS changes unless the user explicitly requested that scope.
 
 ### Firewall rules of engagement
 
@@ -108,15 +125,15 @@ After the report:
 ### Browsers and extensions
 
 - **Negative recommendations only** for browser choice: flag Google Chrome / stock Chromium as default when items say so; do **not** pitch Firefox, Brave, or other brands. Ungoogled Chromium may be noted as acceptable for Chromium-based use.
-- **Firefox plugin items apply only if Firefox is installed** (system binary and/or Flatpak `org.mozilla.firefox`). If not installed → `skip` (do not fail greenlist for missing plugins on non-Firefox hosts). Leftover `~/.mozilla` profiles alone do not count as installed.
-- Prefer profile files (`extensions.json`, `addons.json`) under `~/.mozilla/firefox` and Flatpak data under `~/.var/app/org.mozilla.firefox/`.
-- If detection is inconclusive → `warn` or `skip` with UI steps (about:addons), not a false `pass`.
+- **Firefox plugin items apply only if Firefox is installed** (system binary and/or Flatpak `org.mozilla.firefox`). If not installed → `skip`. Leftover `~/.mozilla` profiles alone do not count as installed.
+- Prefer profile files under `~/.mozilla/firefox` and Flatpak under `~/.var/app/org.mozilla.firefox/`.
+- If detection is inconclusive → `warn` or `skip`, not a false `pass`.
 
 ### Flatpak / install vectors
 
-- If Flatpak is missing, **skip** Flatpak migration items (do not fail the host for not having Flatpak unless a future greenlist item says otherwise).
-- For `desktop.flatpak.apps`: present the `recommend_switch` table; only suggest apps where Flatpak version **≥** system; migrate **one app at a time** with consent; prefer `flatpak install --user`.
-- For KDE: ensure portal + Permissions KCM packages when the KDE Flatpak item applies; use `pkexec` for package installs.
+- If Flatpak is missing, **skip** Flatpak migration items.
+- For `desktop.flatpak.apps`: only suggest apps where Flatpak version **≥** system; migrate **one app at a time**; prefer `flatpak install --user`.
+- For KDE: portal + Permissions KCM packages when that item applies; use `pkexec` for package installs.
 
 ## Anti-patterns
 
@@ -129,4 +146,4 @@ After the report:
 
 ## When done
 
-Offer: re-audit, deepen one area (new ITEM.md proposals), or install safesudo if elevated fixes are painful without polkit discipline.
+Offer: re-run `/securityaudit`, deepen one area (new ITEM.md), or install safesudo if elevated fixes need polkit discipline.

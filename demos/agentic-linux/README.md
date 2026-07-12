@@ -116,11 +116,17 @@ Verbally explain the idea; optional live install from `security/safesudo/README.
 ## Phase 5 — Security audit teaser (8 min)
 
 ```text
+/securityaudit report-only
+```
+
+Or, if the skill is not loaded yet:
+
+```text
 Using the ai-tools repo at $REPO, run a security audit from security/items.
 Report only — do not change the system. Call out any greenlist gaps.
 ```
 
-Replace `$REPO` with your real path when pasting.
+Replace `$REPO` with your real path when pasting. Prefer **`/securityaudit`** after the skill is installed.
 
 Show the table: Firefox plugins, firewall, NTP, E2EE chat client, etc.
 
