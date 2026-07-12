@@ -1,52 +1,29 @@
 # ai-tools
 
-Shared skills and hooks for coding agents (Grok, Claude Code, and similar).
+A grab bag of **AI-related tools** worth sharing with friends: agent skills, hooks, small helpers, and patterns that make coding agents (Grok, Claude Code, and the rest) more useful and a bit safer.
+
+This is not a single-purpose project. Whatever lands here should be portable, documented enough that someone else can try it, and free of personal secrets (see [policy](#repository-policy-no-secrets-no-pii-no-machine-specific-config) below).
 
 ## For humans: point your AI at this
 
-**Hey — clone this repo, point your coding agent at it, and it can install tools and do privileged work for you without you pasting `sudo` into the chat.**
-
-What you get in practice:
-
-1. **You** approve elevation the normal desktop way (polkit password / fingerprint dialog), not by typing your password into the agent.
-2. **The agent** is steered to `pkexec` only — `sudo`, `su`, `doas`, and friends are blocked by a hook so they can’t sneak around polkit.
-3. **Skills** in this tree teach the agent the workflow; you don’t have to re-explain it every session.
-
-Typical setup:
+**Hey — clone this repo and point your coding agent at it.** Skills and hooks here are meant to be picked up by the agent so it can help you set things up and use them, instead of you re-explaining the same workflows every time.
 
 ```bash
 git clone https://github.com/kazetsukaimiko/ai-tools.git
-# tell your agent: "install safesudo from ~/…/ai-tools" or follow the quick start below
+# Then tell your agent something like:
+#   "Look at ~/…/ai-tools and install anything useful"
+# or open a chat with that folder as the workspace / skill path.
 ```
 
-Then either ask the agent to install the hook/skill, or run the commands under [security/safesudo (quick start)](#securitysafesudo-quick-start). After that, requests like “install this package” can go through polkit instead of a raw `sudo` in the terminal transcript.
+Each tool lives in its own directory with a short human README plus a `SKILL.md` for agents. Ask the agent to install what you want — or follow that tool’s README yourself.
 
-Details for agents and power users live in each skill’s `SKILL.md` (e.g. [`security/safesudo/SKILL.md`](security/safesudo/SKILL.md)).
+## What’s here
 
-## Layout
-
-| Path | Description |
+| Tool | Description |
 |------|-------------|
-| [`security/safesudo/`](security/safesudo/) | **safesudo** — `pkexec`/polkit-only elevation; block `sudo`/`su`/`doas`/… |
+| [**safesudo**](security/safesudo/) | Lets coding agents do privileged work (install packages, edit system config, etc.) through **polkit** (`pkexec`) instead of classic elevators. A hook blocks the usual alternatives so elevation stays on one path you already understand (desktop password / fingerprint dialog). |
 
-## security/safesudo (quick start)
-
-```bash
-git clone https://github.com/kazetsukaimiko/ai-tools.git
-# set REPO to your clone path
-export REPO="$PWD/ai-tools"   # or wherever you cloned
-mkdir -p "$HOME/.grok/hooks"
-cp "$REPO/security/safesudo/scripts/elev-gate.sh" \
-   "$REPO/security/safesudo/scripts/elev-gate.py" \
-   "$HOME/.grok/hooks/"
-cp "$REPO/security/safesudo/elev-gate.json" "$HOME/.grok/hooks/elev-gate.json"
-chmod +x "$HOME/.grok/hooks/elev-gate.sh" "$HOME/.grok/hooks/elev-gate.py"
-# optional: "$REPO/security/safesudo/scripts/selftest.sh"
-```
-
-Point your agent skill path at this repo (or copy `security/safesudo` into `~/.grok/skills/` / project skills). Reload hooks in Grok (`/hooks` → `r`) if the session was already open.
-
-You need a working polkit authentication agent (e.g. on KDE, polkit-kde-agent) and usually membership in an admin group such as `wheel`.
+More tools will land under other folders as we share them. Prefer **one concern per directory**, add a row here, and keep install details in that tool’s own README.
 
 ## Repository policy: no secrets, no PII, no machine-specific config
 
@@ -58,9 +35,9 @@ You need a working polkit authentication agent (e.g. on KDE, polkit-kde-agent) a
 | **PII** | Email addresses, phone numbers, real names used as contact data, home addresses |
 | **Account identifiers** | Usernames/logins that identify a person or private account, personal `@` handles when used as credentials or private identity |
 | **Machine-specific paths & state** | Hardcoded home directories tied to one person as *required* config, hostnames, local IP addresses, hardware serials, absolute paths that only work on one box |
-| **Private local overlays** | Personal polkit rules with host-specific allowlists, SSH configs, VPN profiles |
+| **Private local overlays** | Host-specific policy files, SSH configs, VPN profiles |
 
-**Do commit:** portable scripts, skills, documented blocklists, example install commands that use placeholders (`$HOME`, `$REPO`, `your-clone-path`), and generic policy text.
+**Do commit:** portable scripts, skills, documented policies, example install commands that use placeholders (`$HOME`, `$REPO`, `your-clone-path`), and generic write-ups.
 
 If a workflow needs local identity or machine paths, document the **placeholder** and keep the real values in ignored local files or a private ops repo—not here.
 
