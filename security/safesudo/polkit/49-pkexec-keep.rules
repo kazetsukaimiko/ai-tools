@@ -1,0 +1,32 @@
+/* -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*- */
+/*
+ * safesudo optional overlay: temporary authorization for generic pkexec.
+ *
+ * Stock org.freedesktop.policykit.exec defaults to auth_admin — every
+ * separate pkexec process re-prompts. AUTH_ADMIN_KEEP remembers a successful
+ * admin auth for a short window (typically ~5 minutes; polkit-built-in),
+ * so back-to-back agent tool calls do not re-prompt each time.
+ *
+ * Still requires admin authentication the first time (and after expiry).
+ * Only applies to active local sessions (desktop agent present).
+ *
+ * Install (example — adjust REPO to your clone):
+ *   pkexec install -m 644 \
+ *     "$REPO/security/safesudo/polkit/49-pkexec-keep.rules" \
+ *     /etc/polkit-1/rules.d/49-pkexec-keep.rules
+ *
+ * Remove:
+ *   pkexec rm -f /etc/polkit-1/rules.d/49-pkexec-keep.rules
+ *
+ * polkitd reloads rules when files under rules.d change; no reboot required.
+ * This file is portable policy, not machine-specific identity config.
+ */
+
+polkit.addRule(function (action, subject) {
+    if (action.id !== "org.freedesktop.policykit.exec") {
+        return;
+    }
+    if (subject.active && subject.local) {
+        return polkit.Result.AUTH_ADMIN_KEEP;
+    }
+});
