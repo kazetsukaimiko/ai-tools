@@ -3,8 +3,9 @@ name: safesudo
 description: >
   Force privileged shell work through pkexec/polkit only. Block sudo, su, doas,
   kdesu, and other parallel elevation tools; leave consent and auth retention to
-  polkit. Use when installing the elev-gate hook, configuring agent elevation
-  policy, the user mentions sudo/pkexec/polkit/safesudo, or any task needs root.
+  polkit. Always prefer pkexec first (hook deny may cancel the turn). Use when
+  installing the elev-gate hook, configuring agent elevation policy, the user
+  mentions sudo/pkexec/polkit/safesudo, or any task needs root.
 compatibility: >
   Linux with polkit recommended (pkexec + a session authentication agent such as
   polkit-kde-agent or polkit-gnome-authentication-agent). Grok Build PreToolUse
@@ -37,10 +38,23 @@ metadata:
 
 **Agent rule of thumb**
 
-1. Need root or another user? Use **`pkexec`** (or a polkit-aware helper with an explicit action ID).
+1. **Use `pkexec` on the first attempt** whenever you need root or another user (or a polkit-aware helper with an explicit action ID). **Do not lead with `sudo`** and “fix later.”
 2. Never use tools on the blocklist below — even inside `bash -c`, scripts, or nested under `pkexec`.
 3. Prefer **narrow helpers** (`pkexec /usr/local/sbin/set-lights …`) over `pkexec bash` / open root shells when the user might walk away or approve remotely.
-4. If elevation is denied by the hook, **retry with `pkexec` only** — do not fall back to `sudo`.
+4. **If** a blocklist deny still returns control to you in the same turn, rewrite to `pkexec` and re-run immediately — do not wait for the user to say “try pkexec.” Do not treat that path as reliable (see harness note below).
+
+### Harness limitation (Grok Build and similar)
+
+A PreToolUse **deny** may **end or cancel the agent turn** instead of returning a normal tool error the model can recover from (UI may show “turn cancelled” / “hook blocked”). In that case **same-turn retry is impossible** — the blocklist is a hard stop, not a soft redirect.
+
+**Implication:** Prevention over recovery. Always choose `pkexec` first. The elev-gate exists to stop accidental `sudo`/`su`/…, not as a workflow that expects deny → rewrite → continue.
+
+| Situation | What to do |
+|-----------|------------|
+| You still need elevation and have not tried yet | Call `pkexec …` directly |
+| Hook denied and the turn continues | Rewrite to `pkexec` and run again |
+| Hook denied and the turn was cancelled | Next user message / new turn: use `pkexec` only; do not re-attempt blocklisted tools |
+| Polkit “Not authorized” / user dismissed dialog | Report; wait — do not spam dialogs |
 
 ## Elevation blocklist
 
@@ -136,15 +150,26 @@ Same script logic applies anywhere you have a **pre-shell** hook with JSON stdin
 
 ## Agent instructions (when this skill is active)
 
-1. **Never** invoke blocklisted elevation tools.
+1. **Never** invoke blocklisted elevation tools. When elevation is required, the **first** shell call should already use `pkexec` (or a polkit helper). Do not probe with `sudo` to “see what happens.”
 2. For package installs, service control, edits under `/etc`, or other root work, use:
    ```bash
    pkexec <absolute-or-PATH-program> [args…]
    ```
    Example: `pkexec pacman -S --noconfirm some-package` (only when the user asked for that package).
 3. Put a clear **tool description** on shell calls so humans reading logs know why elevation was needed (polkit may not show it).
-4. If a command fails because of this policy, rewrite to `pkexec` — do not ask the user to “run sudo for me” unless they explicitly want a non-agent path.
-5. For work that may run while the user is away, prefer **small privileged helpers** and document that polkit rules/retention apply — do not open an interactive root shell and wait.
+4. **Do not rely on hook deny as control flow.** Some harnesses cancel the turn on PreToolUse deny, so you may never get a chance to rewrite. Prevention is the real fix.
+5. **If** you still receive a deny reason and the turn continues, rewrite (e.g. `sudo pacman -S foo` → `pkexec pacman -S foo`) and re-run without asking the user to remind you.
+6. **Polkit cancel/deny** (`Not authorized`, user dismissed the dialog) is different: report that and wait — do not spam dialogs.
+7. For work that may run while the user is away, prefer **small privileged helpers** and document that polkit rules/retention apply — do not open an interactive root shell and wait.
+
+### Anti-patterns
+
+| Bad | Good |
+|-----|------|
+| Lead with `sudo …` hoping to retry after deny | Lead with `pkexec …` |
+| Use deny → rewrite as the normal workflow | Treat deny as a failed accidental path |
+| Wait for user: “should I try pkexec?” | Use `pkexec` without being asked |
+| After hook deny, try `su` / `doas` / `kdesu` | Only `pkexec` (or abandon elevation) |
 
 ## What this skill deliberately does *not* do
 

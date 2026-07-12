@@ -15,9 +15,11 @@ import sys
 from pathlib import PurePosixPath
 
 DENY_REASON = (
-    "Elevation via this tool is blocked for agents. Use pkexec so polkit can "
-    "authenticate (e.g. pkexec <command> …). Do not use sudo, su, doas, kdesu, "
-    "run0, or similar. Retry with pkexec only."
+    "Elevation via this tool is blocked for agents. Use pkexec on the NEXT "
+    "attempt (e.g. pkexec <command> …) so polkit can authenticate — prefer "
+    "pkexec first next time; some harnesses cancel the turn on this deny so "
+    "same-turn retry may be impossible. Do not use sudo, su, doas, kdesu, "
+    "run0, or similar."
 )
 
 # Basenames only (see SKILL.md table).
