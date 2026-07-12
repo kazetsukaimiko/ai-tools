@@ -28,8 +28,6 @@ Portable checklist entries for the [**/securityaudit**](../../skills/securityaud
 | `network/firewall/present/` | Host firewall stack present |
 | `network/firewall/default_deny_hint/` | Advisory default-deny posture |
 | `system/ntp/` | Clock sync / NTP |
-| `privacy/vpn_client_present/` | VPN client tools present |
-| `chat/e2ee_client_present/` | E2EE chat client present |
 
 ### Browser recommendation policy
 

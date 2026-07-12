@@ -2,7 +2,7 @@
 name: securityaudit
 description: >
   Report-only Linux desktop security audit against this repo's security/items
-  checklist (browsers, Flatpak, firewall, NTP, VPN/chat, greenlist). Default is
+  checklist (browsers, Flatpak, firewall, NTP, greenlist). Default is
   read-only: never remediate unless the user explicitly asks, and get approval
   for each item before fixing. Use for /securityaudit, security audit, machine
   hardening check, greenlist review, degoogle checklist, or privacy posture review.

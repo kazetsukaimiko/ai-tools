@@ -128,7 +128,7 @@ Report only — do not change the system. Call out any greenlist gaps.
 
 Replace `$REPO` with your real path when pasting. Prefer **`/securityaudit`** after the skill is installed.
 
-Show the table: Firefox plugins, firewall, NTP, E2EE chat client, etc.
+Show the table: Firefox plugins, firewall, NTP, Flatpak items, etc.
 
 Talking points:
 
