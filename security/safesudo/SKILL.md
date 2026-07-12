@@ -109,56 +109,74 @@ After the harness allows `pkexec`, **polkit** may prompt (desktop agent today; a
 
 ### Problem
 
-Stock `org.freedesktop.policykit.exec` (the action behind generic `pkexec`) defaults to **`auth_admin`**: **every** separate `pkexec` process can re-prompt. Agents that run several elevated tool calls in a row force a password dialog for each one. There is no `pkexec --cache-password` flag; retention is **polkit policy**.
+Stock `org.freedesktop.policykit.exec` (generic `pkexec`) defaults to **`auth_admin`**: every `pkexec` re-prompts. There is no `pkexec --cache-password`.
+
+**`AUTH_ADMIN_KEEP` alone is not enough for agents.** Polkit stores that temporary authorization against the **calling process** (unix-process subject = PID). Coding agents spawn a **new shell per tool call**, so each message is a new PID → a new password dialog even “within five minutes.” Keep *does* work for multiple `pkexec`s **inside the same shell** (one tool call with two elevates → one prompt).
 
 ### Solution shipped here
 
-Optional JS rule: [`polkit/49-pkexec-keep.rules`](polkit/49-pkexec-keep.rules)
+| Piece | Role |
+|-------|------|
+| [`polkit/49-pkexec-keep.rules`](polkit/49-pkexec-keep.rules) | If session stamp valid → `YES`; else `AUTH_ADMIN_KEEP` (same-process multi-`pkexec`) |
+| [`scripts/session-keep-stamp`](scripts/session-keep-stamp) | As root via `pkexec`: write `/run/safesudo-session-keep/<uid>` expiry (~300s) |
+| [`scripts/session-keep-check`](scripts/session-keep-check) | Used by the rule via `polkit.spawn`; exit 0 if stamp non-expired |
 
 | Setting | Behavior |
 |---------|----------|
 | Stock defaults | `auth_admin` — re-auth every `pkexec` |
-| This overlay | `AUTH_ADMIN_KEEP` for `org.freedesktop.policykit.exec` when `subject.active && subject.local` |
-| Keep window | Short (typically ~5 minutes; built into polkit, not configurable in the rule file) |
-| First use / after expiry | Still requires admin authentication via the session agent |
+| Overlay, no stamp yet | `AUTH_ADMIN_KEEP` — one prompt per **process**; multi-`pkexec` in that process ok |
+| Overlay, after stamp | `YES` for that **uid** until stamp expires — **cross tool-call / new shells** |
+| Keep window | ~300s (stamp helper; override with `SAFESUDO_KEEP_SECONDS` when stamping) |
 
-**Security note:** after a successful auth, *any* `pkexec` from that active local session can proceed without a new dialog until the keep window expires. Prefer batching sensitive one-offs when that matters; use custom action IDs for narrower long-term policy.
+**Security note:** a valid stamp lets *any* `pkexec` from that user proceed without a dialog until expiry. Stamp files live under `/run` (tmpfs), root-owned, keyed by uid from `PKEXEC_UID` (not forgeable by the user writing their own file). Prefer batching highly sensitive one-offs; use custom action IDs for narrower long-term policy.
 
-### Install (one elevated call)
+### Install (helpers + rule)
 
 ```bash
 REPO="${REPO:-$HOME/workspace/ai-tools}"   # path to this clone — adjust locally
-pkexec install -m 644 \
-  "$REPO/security/safesudo/polkit/49-pkexec-keep.rules" \
-  /etc/polkit-1/rules.d/49-pkexec-keep.rules
+pkexec bash -c "set -euo pipefail
+install -d -m 755 /usr/local/lib/safesudo
+install -m 755 \"$REPO/security/safesudo/scripts/session-keep-stamp\" \
+               \"$REPO/security/safesudo/scripts/session-keep-check\" \
+               /usr/local/lib/safesudo/
+install -d -m 750 /etc/polkit-1/rules.d
+install -m 644 \"$REPO/security/safesudo/polkit/49-pkexec-keep.rules\" \
+               /etc/polkit-1/rules.d/49-pkexec-keep.rules"
 ```
 
-`polkitd` reloads rules when files under `rules.d` change; no reboot required. Approve the polkit dialog once to install.
+`polkitd` reloads rules when `rules.d` changes; no reboot. Paths in the rule file must match `/usr/local/lib/safesudo/`.
 
 ### Remove
 
 ```bash
-pkexec rm -f /etc/polkit-1/rules.d/49-pkexec-keep.rules
+pkexec bash -c 'rm -f /etc/polkit-1/rules.d/49-pkexec-keep.rules
+rm -rf /usr/local/lib/safesudo /run/safesudo-session-keep'
 ```
 
-### Agent behavior with and without the overlay
+### Agent: always stamp when elevating (required for cross-turn keep)
 
-| Situation | Without keep | With keep installed |
-|-----------|--------------|---------------------|
-| Several root steps in one task | Batch into **one** `pkexec bash -c '…'` when possible | Batch still good; separate `pkexec` calls may reuse the keep window |
-| Steps minutes apart | Re-prompt each time | Re-prompt after keep expires (~5 min) |
-| User dismisses dialog | Stop; do not spam | Same |
-
-**Always batch when you already know the full elevated sequence** — fewer prompts even without the overlay, clearer logs, one failure domain:
+**Every elevated batch should run `session-keep-stamp` once as root** (after the user has authenticated for that `pkexec`). That creates/refreshes the session stamp so **later tool calls** do not re-prompt.
 
 ```bash
+# Preferred: stamp + work in one elevation (one dialog if no stamp yet)
 pkexec bash -c 'set -euo pipefail
+/usr/local/lib/safesudo/session-keep-stamp
 command1
-command2
-command3'
+command2'
+
+# Single program still stamp first when you expect more elevates soon:
+pkexec bash -c '/usr/local/lib/safesudo/session-keep-stamp; exec pacman -S --noconfirm foo'
 ```
 
-Do not put blocklisted elevators inside that script.
+| Situation | Expected prompts |
+|-----------|------------------|
+| First elevate (no stamp) that runs stamp | One dialog |
+| Later `pkexec …` within ~5 min (stamp valid) | **None** |
+| Stamp expired | One dialog again (re-stamp in the same batch) |
+| Two `pkexec`s in one shell, no stamp helper | One dialog (`AUTH_ADMIN_KEEP` per process) |
+| New agent shell, only `AUTH_ADMIN_KEEP`, no stamp | **One dialog per shell** (the bug we fixed) |
+
+Do not put blocklisted elevators inside elevated scripts.
 
 ## Install the Grok PreToolUse hook
 
@@ -211,13 +229,13 @@ Same script logic applies anywhere you have a **pre-shell** hook with JSON stdin
    pkexec <absolute-or-PATH-program> [args…]
    ```
    Example: `pkexec pacman -S --noconfirm some-package` (only when the user asked for that package).
-3. When several elevated steps are known up front, **batch** them in one `pkexec bash -c '…'` (see [Auth retention](#auth-retention-optional-polkit-overlay)). Prefer a single program when possible (`pkexec pacman -S a b c`).
+3. When several elevated steps are known up front, **batch** them in one `pkexec bash -c '…'` and run **`/usr/local/lib/safesudo/session-keep-stamp` first** (see [Auth retention](#auth-retention-optional-polkit-overlay)). Prefer a single program when possible.
 4. Put a clear **tool description** on shell calls so humans reading logs know why elevation was needed (polkit may not show it).
 5. **Do not rely on hook deny as control flow.** Some harnesses cancel the turn on PreToolUse deny, so you may never get a chance to rewrite. Prevention is the real fix.
 6. **If** you still receive a deny reason and the turn continues, rewrite (e.g. `sudo pacman -S foo` → `pkexec pacman -S foo`) and re-run without asking the user to remind you.
 7. **Polkit cancel/deny** (`Not authorized`, user dismissed the dialog) is different: report that and wait — do not spam dialogs.
 8. For work that may run while the user is away, prefer **small privileged helpers** and document that polkit rules/retention apply — do not open an interactive root shell and wait.
-9. If the user wants fewer re-prompts across separate tool calls, offer/install the optional [`polkit/49-pkexec-keep.rules`](polkit/49-pkexec-keep.rules) overlay (via `pkexec install …`).
+9. If the user wants fewer re-prompts across **separate agent turns**, install the session-keep overlay (rule + stamp/check helpers) and **always stamp** inside elevated batches.
 
 ### Anti-patterns
 
@@ -227,7 +245,8 @@ Same script logic applies anywhere you have a **pre-shell** hook with JSON stdin
 | Use deny → rewrite as the normal workflow | Treat deny as a failed accidental path |
 | Wait for user: “should I try pkexec?” | Use `pkexec` without being asked |
 | After hook deny, try `su` / `doas` / `kdesu` | Only `pkexec` (or abandon elevation) |
-| Many separate `pkexec` calls for one known sequence | One `pkexec bash -c '…'` (and/or keep overlay) |
+| Expect `AUTH_ADMIN_KEEP` alone to survive a new shell | Stamp with `session-keep-stamp` for cross-turn keep |
+| Many separate `pkexec` calls for one known sequence | One `pkexec bash -c 'stamp; …'` |
 
 ## What this skill deliberately does *not* do
 
@@ -235,7 +254,7 @@ Same script logic applies anywhere you have a **pre-shell** hook with JSON stdin
 - No parsing of agent “intent” into the OS dialog.
 - No usernames, hostnames, or machine-only absolute paths as *required* config in-repo.
 - No claim that `pkexec` is safe without a working polkit agent and sane rules.
-- No unlimited password-less root — `AUTH_ADMIN_KEEP` is still time-bounded and admin-gated.
+- No unlimited password-less root — session stamps and `AUTH_ADMIN_KEEP` are time-bounded and admin-gated.
 
 ## Sharing and local overlays
 

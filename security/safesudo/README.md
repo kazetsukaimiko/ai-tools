@@ -10,7 +10,7 @@ Coding agents often reach for classic privilege tools when they need to install 
 
 1. **Hook** — blocks agent shell use of common elevators (`sudo`, `su`, `doas`, `kdesu`, `run0`, …).
 2. **Skill** — teaches the agent to use **`pkexec`** instead, so **you** approve elevation via your normal polkit dialog (password / fingerprint). Auth retention stays with polkit.
-3. **Optional polkit keep rule** — stock `pkexec` re-prompts on every process; [`polkit/49-pkexec-keep.rules`](polkit/49-pkexec-keep.rules) switches generic `pkexec` to **`AUTH_ADMIN_KEEP`** (~5 minutes) for active local sessions so back-to-back elevated commands are less annoying.
+3. **Optional session keep** — stock `AUTH_ADMIN_KEEP` is **per process**, so agents re-prompt every tool call. safesudo adds a **session stamp** (`session-keep-stamp` / `session-keep-check` + [`polkit/49-pkexec-keep.rules`](polkit/49-pkexec-keep.rules)) so one auth covers ~5 minutes across new shells.
 
 You keep control of root-shaped actions; the agent does not get a separate “type password into the chat” path.
 
@@ -41,19 +41,21 @@ Optional offline check:
 "$REPO/security/safesudo/scripts/selftest.sh"
 ```
 
-### Optional: fewer password prompts (polkit keep)
+### Optional: fewer password prompts (session keep)
 
-Default `pkexec` uses **`auth_admin`** (prompt every invocation). To remember admin auth for a short window after you approve once:
+`AUTH_ADMIN_KEEP` alone only covers multiple `pkexec`s in the **same process**. Agents open a new shell per turn, so you still get a prompt every message. Install the **session stamp** helpers + rule:
 
 ```bash
-pkexec install -m 644 \
-  "$REPO/security/safesudo/polkit/49-pkexec-keep.rules" \
-  /etc/polkit-1/rules.d/49-pkexec-keep.rules
+pkexec bash -c "set -euo pipefail
+install -d -m 755 /usr/local/lib/safesudo
+install -m 755 \"$REPO/security/safesudo/scripts/session-keep-stamp\" \
+               \"$REPO/security/safesudo/scripts/session-keep-check\" \
+               /usr/local/lib/safesudo/
+install -m 644 \"$REPO/security/safesudo/polkit/49-pkexec-keep.rules\" \
+               /etc/polkit-1/rules.d/49-pkexec-keep.rules"
 ```
 
-Remove with `pkexec rm -f /etc/polkit-1/rules.d/49-pkexec-keep.rules`. Details and security notes: [`SKILL.md`](SKILL.md#auth-retention-optional-polkit-overlay).
-
-Agents should still **batch** known multi-step root work into one `pkexec bash -c '…'` when they can.
+Agents should run **`session-keep-stamp` inside elevated batches** so later turns skip the dialog. Details: [`SKILL.md`](SKILL.md#auth-retention-optional-polkit-overlay).
 
 - Reload hooks if Grok is already running: `/hooks` → **`r`**
 - Point skills at this repo, or copy `security/safesudo` into `~/.grok/skills/` (or project skills)
@@ -64,7 +66,7 @@ Agents should still **batch** known multi-step root work into one `pkexec bash -
 |-------------|----------|
 | Blocklisted elevator + `true` | Hook **deny**; reason mentions `pkexec` |
 | `pkexec true` | Hook **allow**; polkit may prompt; success if you approve |
-| Second `pkexec` soon after (with keep rule) | Often **no** second password dialog (~5 min window) |
+| Second `pkexec` soon after (with session stamp) | **No** dialog until stamp expires (~5 min) |
 | Normal non-elevated command | Unchanged |
 
 **Note:** Some harnesses **cancel the agent turn** on hook deny. Treat the blocklist as a hard stop, not a “retry after deny” workflow — agents should lead with `pkexec` when elevation is needed. See `SKILL.md`.
@@ -78,7 +80,9 @@ Agents should still **batch** known multi-step root work into one `pkexec bash -
 | [`scripts/elev-gate.py`](scripts/elev-gate.py) | Blocklist policy |
 | [`scripts/elev-gate.sh`](scripts/elev-gate.sh) | Hook launcher |
 | [`scripts/selftest.sh`](scripts/selftest.sh) | Offline allow/deny checks |
-| [`polkit/49-pkexec-keep.rules`](polkit/49-pkexec-keep.rules) | Optional `AUTH_ADMIN_KEEP` for generic `pkexec` |
+| [`polkit/49-pkexec-keep.rules`](polkit/49-pkexec-keep.rules) | Session stamp → YES; else per-process `AUTH_ADMIN_KEEP` |
+| [`scripts/session-keep-stamp`](scripts/session-keep-stamp) | Write `/run/safesudo-session-keep/<uid>` after elevating |
+| [`scripts/session-keep-check`](scripts/session-keep-check) | polkit.spawn helper: is stamp still valid? |
 
 ## Sharing
 

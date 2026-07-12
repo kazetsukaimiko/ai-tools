@@ -1,32 +1,44 @@
 /* -*- mode: js; js-indent-level: 4; indent-tabs-mode: nil -*- */
 /*
- * safesudo optional overlay: temporary authorization for generic pkexec.
+ * safesudo: session-scoped keep for generic pkexec.
  *
- * Stock org.freedesktop.policykit.exec defaults to auth_admin — every
- * separate pkexec process re-prompts. AUTH_ADMIN_KEEP remembers a successful
- * admin auth for a short window (typically ~5 minutes; polkit-built-in),
- * so back-to-back agent tool calls do not re-prompt each time.
+ * Why not AUTH_ADMIN_KEEP alone?
+ *   Stock polkit stores AUTH_*_KEEP temporary authorizations against the
+ *   *calling process* (unix-process subject: PID). Each new agent shell is a
+ *   new PID, so a new prompt appears every tool call even within "5 minutes".
+ *   AUTH_ADMIN_KEEP still helps when one shell runs multiple pkexecs.
  *
- * Still requires admin authentication the first time (and after expiry).
- * Only applies to active local sessions (desktop agent present).
+ * Session keep (this file + helpers):
+ *   1) After a successful elevation, run session-keep-stamp (as root via pkexec).
+ *      It writes /run/safesudo-session-keep/<uid> with an expiry (~300s).
+ *   2) This rule: if session-keep-check USER succeeds → YES (no dialog).
+ *      Otherwise → AUTH_ADMIN_KEEP (prompt once per process, multi-pkexec ok).
  *
- * Install (example — adjust REPO to your clone):
- *   pkexec install -m 644 \
- *     "$REPO/security/safesudo/polkit/49-pkexec-keep.rules" \
- *     /etc/polkit-1/rules.d/49-pkexec-keep.rules
+ * Install helpers to /usr/local/lib/safesudo/ (see SKILL.md). Paths below must
+ * match the install location.
  *
  * Remove:
  *   pkexec rm -f /etc/polkit-1/rules.d/49-pkexec-keep.rules
- *
- * polkitd reloads rules when files under rules.d change; no reboot required.
- * This file is portable policy, not machine-specific identity config.
+ *   pkexec rm -rf /usr/local/lib/safesudo /run/safesudo-session-keep
  */
+
+var CHECK = "/usr/local/lib/safesudo/session-keep-check";
 
 polkit.addRule(function (action, subject) {
     if (action.id !== "org.freedesktop.policykit.exec") {
         return;
     }
-    if (subject.active && subject.local) {
-        return polkit.Result.AUTH_ADMIN_KEEP;
+    if (!(subject.active && subject.local)) {
+        return;
     }
+
+    try {
+        polkit.spawn([CHECK, String(subject.user)]);
+        return polkit.Result.YES;
+    } catch (error) {
+        /* no valid stamp — fall through */
+    }
+
+    /* Same-process multi-pkexec still benefits from keep */
+    return polkit.Result.AUTH_ADMIN_KEEP;
 });

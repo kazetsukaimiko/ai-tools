@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Exit 0 if USERNAME has a non-expired session-keep stamp.
+# Used from polkit rules via polkit.spawn([...]).
+set -euo pipefail
+
+STAMP_DIR="${SAFESUDO_STAMP_DIR:-/run/safesudo-session-keep}"
+user="${1:-}"
+if [[ -z "$user" ]]; then
+  echo "usage: session-keep-check USERNAME" >&2
+  exit 2
+fi
+
+# resolve uid
+if [[ "$user" =~ ^[0-9]+$ ]]; then
+  uid="$user"
+else
+  uid="$(id -u "$user" 2>/dev/null)" || exit 1
+fi
+
+stamp="$STAMP_DIR/$uid"
+[[ -f "$stamp" ]] || exit 1
+
+expiry="$(tr -d '[:space:]' <"$stamp" || true)"
+[[ "$expiry" =~ ^[0-9]+$ ]] || exit 1
+now="$(date +%s)"
+(( now < expiry )) || exit 1
+exit 0
