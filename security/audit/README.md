@@ -13,22 +13,29 @@ Human overview for the **`/securityaudit`** skill and checklist.
 A **Linux desktop** security checklist your coding agent can walk through:
 
 - Discover items under `security/items/**/ITEM.md`
-- Run optional read-only `check.sh` scripts
+- Run optional **read-only** `check.sh` scripts
 - Report pass / fail / warn / skip
 - Highlight **greenlist** gaps (group-recommended controls)
-- Fix **one item at a time** with your consent (elevation via `pkexec` / [safesudo](../safesudo/) when needed)
+- **Only if you ask:** remediate **one approved item at a time** (`pkexec` / [safesudo](../safesudo/) when elevation is needed)
 
 It is not a compliance certification or a replacement for threat modeling. It is a living list you can grow with friends after a de-Google / privacy pass.
+
+## Default: report only
+
+| | |
+|--|--|
+| **`/securityaudit`** | Read-only audit. **No installs, no config changes.** |
+| **Remediation** | You must ask (e.g. “fix `desktop.flatpak.kde`”) and **approve that item** after the agent outlines steps. |
+| **Each item** | Separate approval. “Fix everything” still means per-item confirmation before mutations. |
 
 ## How to use
 
 ### Slash command (Grok)
 
 1. Clone this repo and ensure Grok can load the skill (see [Install for Grok](#install-for-grok) below).
-2. In a Grok session type **`/securityaudit`** (optional args: `report-only`, `fix <item-id>`).
-3. Review the table. Pick items to improve. Re-run after each fix.
-
-You can also say: *“Run a security audit using ai-tools security/items — report only.”*
+2. Type **`/securityaudit`** for a report-only pass.
+3. Review the table. To change something: name the **item id**, review the plan, say yes for **that** item only.
+4. Optional: `/securityaudit fix <item-id>` still requires the agent to outline steps and get your approval before mutating.
 
 ### Mechanical checks (no agent)
 
@@ -36,7 +43,7 @@ You can also say: *“Run a security audit using ai-tools security/items — rep
 ./security/items/scripts/run-all-checks.sh
 ```
 
-(from the repo root).
+(from the repo root; read-only).
 
 ## Install for Grok
 
@@ -48,7 +55,7 @@ Point Grok at the repo skills directory (adjust path):
 paths = ["~/workspace/ai-tools/skills"]
 ```
 
-Or symlink one skill into the user skills dir:
+Or symlink:
 
 ```bash
 ln -sfn "$HOME/workspace/ai-tools/skills/securityaudit" "$HOME/.grok/skills/securityaudit"

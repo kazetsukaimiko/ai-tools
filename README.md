@@ -22,7 +22,7 @@ Each tool lives in its own directory with a short human README (and often a `SKI
 | Tool | Description |
 |------|-------------|
 | [**agentic-linux demo**](demos/agentic-linux/) | Facilitator runbook: live demo of agentic CLI AI for friends who only know browser chatbots — prompts, talking points, safety notes. |
-| [**`/securityaudit`**](skills/securityaudit/) | Slash skill: audit a Linux desktop against `security/items`, highlight greenlist gaps, fix one issue at a time. Human docs: [security/audit](security/audit/). |
+| [**`/securityaudit`**](skills/securityaudit/) | Slash skill: **report-only** desktop audit against `security/items`; remediate only when you ask, with **per-item** approval. Human docs: [security/audit](security/audit/). |
 | [**safesudo**](security/safesudo/) | Lets agents elevate via **polkit** (`pkexec`) only; blocks classic elevators in the harness. Useful when audit fixes need root. |
 | [**security items**](security/items/) | The checklist itself (browser defaults/plugins, firewall, NTP, VPN/chat clients, …) — `ITEM.md` + optional `check.sh` per control. |
 

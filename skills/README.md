@@ -4,7 +4,7 @@ Agent skills (Grok / Claude-compatible `SKILL.md` packages) that ship with this 
 
 | Skill | Slash command | Description |
 |-------|---------------|-------------|
-| [securityaudit](securityaudit/) | **`/securityaudit`** | Linux desktop checklist audit (`security/items`) |
+| [securityaudit](securityaudit/) | **`/securityaudit`** | Report-only Linux desktop checklist audit; fixes only on request + per-item approval |
 
 ## Load in Grok
 

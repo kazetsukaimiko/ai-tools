@@ -1,15 +1,15 @@
 ---
 name: securityaudit
 description: >
-  Run a Linux desktop security audit against this repo's security/items checklist
-  (browsers, Flatpak migration, firewall, NTP, VPN/chat clients, greenlist gaps).
-  Report findings, then fix piecemeal with user consent. Use when the user runs
-  /securityaudit, asks for a security audit, machine hardening check, greenlist
-  review, degoogle checklist, or privacy posture review.
+  Report-only Linux desktop security audit against this repo's security/items
+  checklist (browsers, Flatpak, firewall, NTP, VPN/chat, greenlist). Default is
+  read-only: never remediate unless the user explicitly asks, and get approval
+  for each item before fixing. Use for /securityaudit, security audit, machine
+  hardening check, greenlist review, degoogle checklist, or privacy posture review.
 when-to-use: >
   /securityaudit; security audit; audit my machine; greenlist; desktop hardening;
   check flatpak apps; firefox plugins; firewall posture
-argument-hint: "[report-only | fix <item-id>]"
+argument-hint: "[fix <item-id>]  (default: report only)"
 user-invocable: true
 compatibility: >
   Linux desktop. Optional check scripts need bash and python3. Elevated fixes
@@ -17,19 +17,38 @@ compatibility: >
   for security/items.
 license: MIT
 metadata:
-  short-description: "Linux desktop security checklist (/securityaudit)"
+  short-description: "Report-only desktop security audit (/securityaudit)"
   author: ai-tools contributors
 ---
 
 # /securityaudit
 
-Slash command and skill for a **Linux desktop** security checklist audit. Not a full CIS benchmark. Prefer **report first**, then **one fix at a time**.
+Slash skill for a **Linux desktop** security checklist audit. Not a full CIS benchmark.
+
+## Non-negotiable: report-only by default
+
+| Mode | When | Agent may |
+|------|------|-----------|
+| **Report-only (default)** | `/securityaudit`, “run an audit”, or any audit without an explicit fix request | Read-only inventory + checks only. **No installs, no config edits, no service changes, no Flatpak installs, no package removes.** |
+| **Remediate one item** | User clearly asks to fix/remediate **a specific item** (or `fix <item-id>`) **and** approves the plan for that item | Apply **that item only**, after per-item approval |
+
+Rules:
+
+1. **Default is report-only.** Do not start remediating after the report “to be helpful.”
+2. **No action without an explicit user ask** to fix something (not implied by “audit”, “check”, or “review”).
+3. **Per-item approval is mandatory.** Before any mutating step for an item:
+   - State the **item id** and what you will change.
+   - Wait for a clear yes for **that item** (e.g. “yes, fix flatpak-kcm” / “approve browsers.firefox.plugins.ublock_origin”).
+   - Blanket “fix everything” still requires confirming the list; then **re-approve each item** before its mutations (or get an explicit “approve all of: id1, id2, …” and still announce each item before acting).
+4. **Checks are read-only.** `check.sh` and inventory must not change the system.
+5. After a user-approved fix, re-run **that item’s** check only; do not cascade into other items without new approval.
 
 ## On invoke
 
-1. Resolve the **ai-tools** repo root (this skill’s location is `skills/securityaudit/` → repo is two levels up; also try workspace / path the user gives).
-2. Unless the user said `fix …` only, run a **full report-only audit** first.
-3. After the report, offer piecemeal fixes (or follow `fix <item-id>` if given).
+1. Resolve the **ai-tools** repo root (`skills/securityaudit/` → two levels up; or workspace / user path).
+2. Run a **full report-only audit** (unless the user message is *only* `fix <item-id>` with prior context that already has a report—still require approval before mutating).
+3. End with a short “next steps” list of fixable gaps **without applying any**. Offer: *“Say which item id to remediate; I’ll propose steps and wait for approval.”*
+4. Remediations happen only in a **later** turn (or later in the same turn after explicit approval text).
 
 ## Locate the checklist
 
@@ -41,7 +60,7 @@ Ignore `_template/`. Schema: `<repo>/security/audit/schemas/item.md`.
 
 If the repo is missing, ask the user to clone it; do not invent a private checklist.
 
-Optional bulk mechanical run (no agent judgment):
+Optional bulk mechanical run (no agent judgment, still read-only):
 
 ```bash
 <repo>/security/items/scripts/run-all-checks.sh
@@ -49,43 +68,40 @@ Optional bulk mechanical run (no agent judgment):
 
 ## Workflow
 
-### 1. Lightweight host inventory
-
-Gather (read-only):
+### 1. Lightweight host inventory (read-only)
 
 - Distro / version (`/etc/os-release`)
 - Kernel (`uname -r`)
 - Session hints (`XDG_CURRENT_DESKTOP`, `XDG_SESSION_TYPE`) if set
 - Package managers present (`pacman`, `apt`, `dnf`, …)
 - Flatpak available? (`flatpak --version`)
-- Obvious default browser / Firefox vectors (system binary vs `org.mozilla.firefox` Flatpak)
-- Firewall stack probe (firewalld / ufw / nft / iptables — presence and whether listing rules needs elevation)
+- Default browser / Firefox vectors (system vs Flatpak)
+- Firewall stack probe (presence only; do not change rules)
 
-Do **not** dump full firewall rulesets into the chat unless the user asks.
+Do **not** dump full firewall rulesets unless the user asks.
 
-### 2. Discover and evaluate items
+### 2. Discover and evaluate items (read-only)
 
 For each `ITEM.md` (except `_template`):
 
-1. Parse YAML frontmatter (`id`, `title`, `severity`, `greenlist`, `check`, `install_vectors`, `requires_elevation_to_fix`).
-2. If a check script exists (`check` field or `check.sh` beside ITEM.md):
-   - Run it from that item directory (read-only).
-   - Parse JSON stdout for `status`, `summary`, `evidence`, `fix_hint`.
-3. Else follow **How to check (agent)** in the body; set status honestly (`skip` if not applicable).
-4. Record: id, title, status, severity, greenlist flag, one-line notes.
+1. Parse YAML frontmatter (`id`, `title`, `severity`, `greenlist`, `check`, …).
+2. If `check.sh` (or `check` path) exists: run it read-only; parse JSON `status` / `summary` / `evidence` / `fix_hint`.
+3. Else follow **How to check (agent)**; use `skip` when not applicable.
+4. Record: id, title, status, severity, greenlist, one-line notes.
 
-Respect **install vectors** (system vs Flatpak profiles/packages).
+Respect install vectors (system vs Flatpak).
 
 ### 3. Report format
 
-Produce markdown in the conversation (default). Only write a file if the user asks; keep secrets/PII out of git.
+Markdown in the conversation (default). Write a file only if asked; keep secrets/PII out of git.
 
-**Order:** greenlist failures first, then other fails, then warns, then passes/skips (or group by area).
+**Order:** greenlist failures → other fails → warns → passes/skips (or group by area).
 
 ```markdown
 ## Security audit summary
 
 Host: <distro> | vectors: <brief>
+Mode: report-only (no changes made)
 
 ### Greenlist gaps
 | id | title | status | severity | notes |
@@ -97,53 +113,61 @@ Host: <distro> | vectors: <brief>
 
 ### Passed / skipped
 …
+
+### Remediation
+No changes applied. To fix an item, name its **id** and approve after I outline steps.
 ```
 
 Statuses: `pass` | `fail` | `warn` | `skip` | `error`.
 
-For each **fail** with `greenlist: true`, phrase it as: *group-recommended control not met*.
+Phrase greenlist fails as: *group-recommended control not met*.
 
-For `desktop.flatpak.apps`, include the **recommend_switch** table when present.
+For `desktop.flatpak.apps`, include the **recommend_switch** table when present (still report-only).
 
-### 4. Piecemeal fix loop
+### 4. Remediation (only when asked + per-item approval)
 
-After the report:
+**Gate (all required before any mutation):**
 
-1. Ask which item to improve (or accept `fix <item-id>` / user priority). **One item per iteration.**
-2. Follow that item’s **How to fix (agent)**. Confirm before mutations.
-3. Elevation: use **`pkexec`** first (see `security/safesudo`). Never lead with classic elevators.
-4. Re-run that item’s check; update status.
-5. No bulk network/firewall/DNS changes unless the user explicitly requested that scope.
+1. User asked to fix (named item or clear list), **and**
+2. Agent outlined concrete steps for **this** item, **and**
+3. User approved **this** item (explicit).
 
-### Firewall rules of engagement
+Then:
 
-- Detect which stack is active; say whether the agent can change it (tool present + elevation).
-- Prefer **guided** changes over silent policy rewrites.
-- Never open unrestricted inbound “to make something work” without clear user intent.
-- Listing full rules may need elevation; summarize first.
+1. Follow that item’s **How to fix (agent)** — nothing else.
+2. Elevation: **`pkexec`** first (see `security/safesudo`). Never lead with classic elevators.
+3. Re-run that item’s check; report new status.
+4. Stop. Next item needs a new approval.
+
+**Not sufficient as approval:** “looks good”, “thanks”, “continue the audit”, emoji reactions, or silence.
+
+### Firewall
+
+- Report stack only unless user asked to change policy **and** approved that item.
+- Never open unrestricted inbound without clear intent + approval.
 
 ### Browsers and extensions
 
-- **Negative recommendations only** for browser choice: flag Google Chrome / stock Chromium as default when items say so; do **not** pitch Firefox, Brave, or other brands. Ungoogled Chromium may be noted as acceptable for Chromium-based use.
-- **Firefox plugin items apply only if Firefox is installed** (system binary and/or Flatpak `org.mozilla.firefox`). If not installed → `skip`. Leftover `~/.mozilla` profiles alone do not count as installed.
-- Prefer profile files under `~/.mozilla/firefox` and Flatpak under `~/.var/app/org.mozilla.firefox/`.
-- If detection is inconclusive → `warn` or `skip`, not a false `pass`.
+- Negative browser recommendations only (see items). No brand pitches except Ungoogled Chromium as non-flagged for Chromium-class use.
+- Firefox plugins only if Firefox is installed; else `skip`.
+- Installing extensions / changing defaults = remediation → needs per-item approval.
 
 ### Flatpak / install vectors
 
-- If Flatpak is missing, **skip** Flatpak migration items.
-- For `desktop.flatpak.apps`: only suggest apps where Flatpak version **≥** system; migrate **one app at a time**; prefer `flatpak install --user`.
-- For KDE: portal + Permissions KCM packages when that item applies; use `pkexec` for package installs.
+- Missing Flatpak → skip Flatpak migration items.
+- Installing Flatpaks or host packages = remediation → per-item approval; prefer `flatpak install --user` when fixing app migration.
+- KDE portal packages: report missing; install only after approval of `desktop.flatpak.kde` (or equivalent).
 
 ## Anti-patterns
 
 | Bad | Good |
 |-----|------|
-| Auto-fix everything | Report, then one item with consent |
-| Classic elevator for package install | `pkexec …` |
-| Assume only system Firefox | Check Flatpak vectors too |
-| Commit audit dumps with hostnames/emails into this repo | Chat or user-local redacted file |
+| Fix gaps automatically after the report | Report only; wait for an explicit fix request |
+| “I’ll go ahead and install X” without a yes | Outline steps → wait for approval on that item id |
+| One approval covers the whole greenlist | Approve **each** item before its mutations |
+| Classic elevator for packages | `pkexec …` after approval |
+| Commit audit dumps with PII into this repo | Chat or user-local redacted file |
 
-## When done
+## When done (report-only)
 
-Offer: re-run `/securityaudit`, deepen one area (new ITEM.md), or install safesudo if elevated fixes need polkit discipline.
+State that **no system changes were made**. Offer: re-run `/securityaudit`, or name an item id to remediate (with approval before action).
