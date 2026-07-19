@@ -1,0 +1,33 @@
+# Himalaya → Proton Mail Bridge (localhost IMAP/SMTP).
+# Copy via scripts/install-himalaya-config.sh — do not commit a filled copy.
+#
+# Placeholders:
+#   YOU@EXAMPLE.COM  → replaced with PROTON_BRIDGE_EMAIL from bridge.env
+# Password is NEVER stored here; auth.cmd sources ~/.config/protonmail/bridge.env
+
+[accounts.proton]
+email = "YOU@EXAMPLE.COM"
+display-name = "Me"
+default = true
+
+folder.aliases.inbox = "INBOX"
+folder.aliases.sent = "Sent"
+folder.aliases.drafts = "Drafts"
+folder.aliases.trash = "Trash"
+
+backend.type = "imap"
+backend.host = "127.0.0.1"
+backend.port = 1143
+# Loopback-only: disable TLS to Bridge (or set start-tls + Bridge cert path).
+backend.encryption.type = "none"
+backend.login = "YOU@EXAMPLE.COM"
+backend.auth.type = "password"
+backend.auth.cmd = "bash -c 'set -a; source \"$HOME/.config/protonmail/bridge.env\"; printf %s \"$PROTON_BRIDGE_PASSWORD\"'"
+
+message.send.backend.type = "smtp"
+message.send.backend.host = "127.0.0.1"
+message.send.backend.port = 1025
+message.send.backend.encryption.type = "none"
+message.send.backend.login = "YOU@EXAMPLE.COM"
+message.send.backend.auth.type = "password"
+message.send.backend.auth.cmd = "bash -c 'set -a; source \"$HOME/.config/protonmail/bridge.env\"; printf %s \"$PROTON_BRIDGE_PASSWORD\"'"
