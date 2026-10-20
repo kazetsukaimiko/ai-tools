@@ -26,6 +26,7 @@ Each tool lives in its own directory with a short human README (and often a `SKI
 | [**`/protonmail_himalaya`**](skills/protonmail_himalaya/) | Slash skill: manage **Proton Mail** via official **Bridge** + **himalaya** (localhost IMAP/SMTP). Credentials via GUI prompt → `0600` env file — never chat or git. |
 | [**safesudo**](security/safesudo/) | Agents elevate via **polkit** (`pkexec`) only; blocks classic elevators; optional **session stamp** so keep survives new agent shells (~5 min), not just same-process `AUTH_ADMIN_KEEP`. |
 | [**security items**](security/items/) | The checklist itself (browser defaults/plugins, Flatpak, firewall, NTP, …) — `ITEM.md` + optional `check.sh` per control. |
+| [**SDLC mandates**](sdlc/) | Process contracts a host `AGENTS.md` can cite. [PR follow-through](sdlc/pr-follow-through/MANDATE.md): own every PR until merge, sync the remote base before each push, reply on every review surface. Skill: [`/pr-follow-through`](skills/pr-follow-through/). |
 
 More tools will land under other folders as we share them. Prefer **one concern per directory**, add a row here, and keep install details in that tool’s own README.
 
