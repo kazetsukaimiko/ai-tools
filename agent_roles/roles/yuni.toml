@@ -1,0 +1,4 @@
+# Yuni — frontend and backend product code
+description = "Writes frontend and backend code and opens the pull request as the product GitHub login."
+default_capability_mode = "all"
+reasoning_effort = "high"

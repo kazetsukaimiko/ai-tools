@@ -1,0 +1,4 @@
+# Sysadmin — provider accounts above the VPS
+description = "Provisions machines and provider resources, and grants other agents access."
+default_capability_mode = "all"
+reasoning_effort = "high"

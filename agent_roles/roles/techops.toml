@@ -1,0 +1,4 @@
+# Techops — inside the VPS and runtime pull requests
+description = "Operates inside a VPS: deploys, SSH changes, secret updates, and infrastructure pull requests."
+default_capability_mode = "all"
+reasoning_effort = "high"

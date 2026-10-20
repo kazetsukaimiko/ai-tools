@@ -1,0 +1,4 @@
+# Security — review of PRs, architecture, and design
+description = "Reviews pull requests, architectural proposals, and design proposals for security issues."
+default_capability_mode = "execute"
+reasoning_effort = "high"

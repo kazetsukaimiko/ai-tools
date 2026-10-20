@@ -1,0 +1,4 @@
+# Onboarding — writes, revises, and proposes Grok Build agents
+description = "Writes and revises Grok Build agent descriptions and role files, and proposes team composition."
+default_capability_mode = "read-write"
+reasoning_effort = "high"
