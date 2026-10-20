@@ -12,6 +12,14 @@ Opening the pull request, pushing, requesting review, and receiving approval are
 
 If a subagent opens the pull request, the session that dispatched the subagent takes the obligation as soon as the subagent returns.
 
+## Dispatch
+
+When more than one pull request or ticket is in play, spawn one subagent per item and run them together, unless they must be serial. Independent items do not share a branch and do not wait on each other. Do not hand one subagent a list of that work.
+
+A dependency chain stays with one subagent, in order. That subagent checks the dependency on every pass under [Dependencies](#dependencies). Two edits that share a branch stay with one subagent.
+
+The session that dispatched them still owns each pull request when a subagent returns.
+
 If the session ends while the pull request is open, the next session in that repo resumes it. See [Session boundaries](#session-boundaries).
 
 ## Host facts
@@ -88,26 +96,47 @@ When the failure is a flake and the branch already contains the integration tip,
 
 While you wait for checks, keep running the comment census. Review comments arrive during CI.
 
+## Dependencies
+
+On every pass, check each pull request this one depends on. A dependency is named in the body, is the base branch when that base is not the integration branch, or is the stack parent this session recorded.
+
+Read that pull request’s state. Do this even when this pull request is a draft. “It is a draft” is not a reason to skip the check.
+
+- While the dependency is open, keep this pull request a draft. Do not request review yet. Keep the census, and check the dependency again on the next pass.
+- When the dependency is merged, this pull request is no longer waiting. In that same pass, bring the branch onto the integration tip under [Sync before every push](#sync-before-every-push), and mark this pull request ready under [Review labels](#review-labels). A sentence in the body that says to stay a draft until that pull request merges is satisfied once it has merged. Staying a draft after that is a bug in the loop, not a hold.
+
 ## The loop
 
 Repeat until the pull request is merged or the obligation has ended.
 
-1. Census comments. Settle any unsettled thread before you request review or merge. A code change goes through [Sync before every push](#sync-before-every-push) and [CI for this SHA](#ci-for-this-sha).
-2. Watch CI for the current SHA.
-3. When CI is red, fix it on this branch and return to step 1.
-4. When CI is green, every thread is settled, and the host says to mark the pull request ready or to request a reviewer, do that once. Record that you did it so later passes do not request it again.
-5. Keep looping. A new comment, a new push, a moved integration tip, or a check that goes red returns to step 1.
-6. Merge only under [Merge](#merge).
+1. Check [Dependencies](#dependencies). When a dependency has merged and this pull request is still a draft, mark it ready in this pass, after the branch contains the integration tip, and request the labeled reviewers in that same pass.
+2. Census comments. Settle any unsettled thread before you request review or merge. A code change goes through [Sync before every push](#sync-before-every-push) and [CI for this SHA](#ci-for-this-sha).
+3. Watch CI for the current SHA.
+4. When CI is red, fix it on this branch and return to step 1.
+5. When CI is green and every thread is settled, mark the pull request ready if it is still a draft, and request the labeled reviewers under [Review labels](#review-labels) in that same action. Marking ready without those requests is not done. Record the requests so later passes do not repeat them. A request that the server rejects is not a success. Say so on the pull request once, and keep the pull request open.
+6. Keep looping. A new comment, a new push, a moved integration tip, a merged dependency, or a check that goes red returns to step 1.
+7. Merge only under [Merge](#merge).
 
 Each pass waits long enough that you are not spinning the API, and short enough that a finished check or a new comment is handled in the current session. Wake on check completion when the platform can do that, and still census comments on a timer. Check events do not carry review comments.
 
 When a check stays pending past a bound the host names, or past roughly 30 minutes with no progress in the job log, say so on the pull request and keep watching. Silence is not a green check.
+
+## Review labels
+
+Two labels decide who is requested when a pull request leaves draft. Apply the label while the pull request is still a draft, before the ready step. The ready step is not finished until each labeled reviewer has a live review request.
+
+- `security-review` means request `lonewatt-security` and do not merge until that account approves the head. A ticket +1 is not that approval. Put this label on a pull request that changes behavior, auth, data, deploy, or runtime config, unless the ticket says this pull request does not need it.
+- `manual-review` means request `kazetsukaimiko` and do not merge until that account approves the head. Security adds this during grooming only when the risk needs kaze. Most pull requests do not have it. A pull request without it does not wait for kaze.
+- Request both when both labels are present. One person’s approval does not clear the other label.
+- CODEOWNERS is a separate gate. It does not replace either label, and neither label replaces it.
+- If the request returns an error, including 422 because that account is not a collaborator, the request did not happen. Say so once on the pull request. Do not merge to get past it.
 
 ## Merge
 
 Merge only when all of these are true:
 
 - The host facts say the agent merges this pull request.
+- Every labeled reviewer in [Review labels](#review-labels) has approved the head, and has not said to hold the merge. A pull request with no `security-review` or `manual-review` label does not wait on those accounts.
 - The required reviewer has approved, and has not said to hold the merge.
 - The comment census is current, and every thread is settled. Run the census again after the approval, before the merge.
 - Fetch again. `HEAD` contains the integration tip you just fetched, and that tip is the pull request’s base.
