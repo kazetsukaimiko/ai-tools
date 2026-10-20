@@ -141,7 +141,9 @@ When a review body is not a review, the pull request author says so on that revi
 
 Pushing a fix for a reviewer's requested changes does not notify them. An old review request that is still open does not notify them either. A comment that only answers the thread does not notify them.
 
-In the same pass as that push, request the reviewer again on the new head. When the account is already in the requested-reviewer list, remove that request and add it again so the notification fires. Do this for `lonewatt-security` when the label is `security-review`, and for `kazetsukaimiko` when the label is `manual-review`. A previous approval of an older head does not count. Do not wait for them to notice the new commit.
+In the same pass as that push, request the reviewer again on the new head. When the account is already in the requested-reviewer list, remove that request and add it again. Do this for `lonewatt-security` when the label is `security-review`, and for `kazetsukaimiko` when the label is `manual-review`. A previous approval of an older head does not count.
+
+A GitHub review request does not wake the security agent. In that same pass, spawn the security agent with the pull request URL, the new head SHA, and the review it is answering. One pull request per spawn. Do not hand one security agent a list of unrelated pull requests. Do not wait for the agent to notice a request on its own.
 
 ## Merge
 
