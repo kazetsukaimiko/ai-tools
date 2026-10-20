@@ -113,7 +113,7 @@ Repeat until the pull request is merged or the obligation has ended.
 2. Census comments. Settle any unsettled thread before you request review or merge. A code change goes through [Sync before every push](#sync-before-every-push) and [CI for this SHA](#ci-for-this-sha).
 3. Watch CI for the current SHA.
 4. When CI is red, fix it on this branch and return to step 1.
-5. When CI is green and every thread is settled, mark the pull request ready if it is still a draft, and request the labeled reviewers under [Review labels](#review-labels) in that same action. Marking ready without those requests is not done. Record the requests so later passes do not repeat them. A request that the server rejects is not a success. Say so on the pull request once, and keep the pull request open.
+5. When CI is green and every thread is settled, mark the pull request ready if it is still a draft, and request the labeled reviewers under [Review labels](#review-labels) in that same action. Marking ready without those requests is not done. A push that answers requested changes also re-requests those reviewers under [Re-review](#re-review) in that same pass. Record the requests so a later pass does not repeat a request that already notified them about this SHA. A request that the server rejects is not a success. Say so on the pull request once, and keep the pull request open.
 6. Keep looping. A new comment, a new push, a moved integration tip, a merged dependency, or a check that goes red returns to step 1.
 7. Merge only under [Merge](#merge).
 
@@ -130,6 +130,18 @@ Two labels decide who is requested when a pull request leaves draft. Apply the l
 - Request both when both labels are present. One person’s approval does not clear the other label.
 - CODEOWNERS is a separate gate. It does not replace either label, and neither label replaces it.
 - If the request returns an error, including 422 because that account is not a collaborator, the request did not happen. Say so once on the pull request. Do not merge to get past it.
+
+## Review bodies
+
+A review body is the verdict. Submit that text. Never submit a local path, a file reference, or a placeholder. A body that is only a path is not a review and not a finding.
+
+When a review body is not a review, the pull request author says so on that review in the same pass. Name the review. Do not change code to satisfy it. The reviewer then posts the real verdict. Leaving the path in place is the reviewer's mistake.
+
+## Re-review
+
+Pushing a fix for a reviewer's requested changes does not notify them. An old review request that is still open does not notify them either. A comment that only answers the thread does not notify them.
+
+In the same pass as that push, request the reviewer again on the new head. When the account is already in the requested-reviewer list, remove that request and add it again so the notification fires. Do this for `lonewatt-security` when the label is `security-review`, and for `kazetsukaimiko` when the label is `manual-review`. A previous approval of an older head does not count. Do not wait for them to notice the new commit.
 
 ## Merge
 
