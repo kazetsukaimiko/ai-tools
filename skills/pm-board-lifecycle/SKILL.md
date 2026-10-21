@@ -34,6 +34,8 @@ Run them in the same pass. Grooming does not wait for the delivery track.
 
 **Delivery.** Spawn one agent per independent ticket or pull request. Do not hand one agent a list of work that can run at the same time. A grooming spawn only comments. A delivery spawn does not edit ticket bodies. A dependency chain stays with one agent, in order. Unrelated tickets, and pull requests that do not share a branch, each get their own agent. Each delivery agent stays with its one pull request until that request merges.
 
+Start at most 10 subagents at once, grooming and delivery together. When one finishes, start the next item that is ready. Ten is how many run at the same time. It is not how much work this pass does. Do not stop while an agent-owned item can still move.
+
 ## Delivery order
 
 1. **Verify.** For every ticket with their prefix, say whether the status matches the live pull request, deploy, or host fact. Fix a wrong status only by reporting it. The project manager sets the status. Check open pull requests they authored. Do not open a second pull request for a ticket that already has one.
