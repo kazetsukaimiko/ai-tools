@@ -64,7 +64,7 @@ Do not run `/gh-agents-react` on each pass. That sweep is for a session with no 
 
 5. **Dependent on Other Tickets.** When those three buckets have nothing left they can move, re-read this column. If the predecessor is done, move the card to Todo, or to Done when the deliverable is already on the board. If the predecessor is still open, leave it and name that ticket. **Needs Intervention** stays until kazetsukaimiko acts. Do not delete data or force a merge to clear a hold.
 
-Then start the loop again from the read. Stop when every remaining open item is a Running Epic, Done, a leave-alone ticket, or blocked on kaze or a named host fact the agents cannot change. Report that remainder. Do not stop just because one spawn returned.
+Then start the loop again from the read. Stop when every remaining open item is a Running Epic, Done, a leave-alone ticket, or in Needs Intervention. Dependent on Other Tickets stays until its predecessor is done. Report that remainder. Do not stop just because one spawn returned.
 
 ## Merge gates
 
