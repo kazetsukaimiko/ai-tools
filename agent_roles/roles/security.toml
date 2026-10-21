@@ -1,4 +1,4 @@
 # Security — review of PRs, architecture, and design
-description = "Reviews pull requests, architectural proposals, and design proposals for security issues."
+description = "Grooms board issues and does an on-demand security review when a person asks. The Security Review check gates pull requests."
 default_capability_mode = "execute"
 reasoning_effort = "high"

@@ -113,7 +113,7 @@ Repeat until the pull request is merged or the obligation has ended.
 2. Census comments. Settle any unsettled thread before you request review or merge. A code change goes through [Sync before every push](#sync-before-every-push) and [CI for this SHA](#ci-for-this-sha).
 3. Watch CI for the current SHA.
 4. When CI is red, fix it on this branch and return to step 1.
-5. When CI is green and every thread is settled, mark the pull request ready if it is still a draft. Request kazetsukaimiko only when `manual-review` is present and the body names the files. Do not request lonewatt-security. Do not spawn the security agent. The security gate is [Review labels](#review-labels).
+5. When CI is green and every thread is settled, mark the pull request ready if it is still a draft. Request kazetsukaimiko only when `manual-review` is present and the body names the files. Do not request the security agent. Do not spawn the security agent. The security gate is [Review labels](#review-labels).
 6. Keep looping. A new comment, a new push, a moved integration tip, a merged dependency, or a check that goes red returns to step 1.
 7. Merge only under [Merge](#merge).
 
@@ -127,9 +127,11 @@ A pull request with no `manual-review` label merges without kazetsukaimiko. Do n
 
 `manual-review` is rare. Add it only when the pull request body has a `Manual review` section that names the files and the reason only kazetsukaimiko can decide. Touching auth is not that reason. If the label is present and the section is missing, remove the label and merge without that review.
 
-`security-review` is not a request to spawn the security agent. Once the `Security Review` check exists on the head, a green run is the security gate and a red run is the hold. Do not spawn security for the pull request. Until that check exists, kazetsukaimiko's approval of the head satisfies `security-review` for that head. A new push that dismisses the approval needs that approval again. Do not spawn the security agent to replace it.
+The `security-review` label is obsolete. Do not add it. If it is present, remove it. It does not start, stop, or gate the Security Review job.
 
-The security agent grooms the board. It does not review pull requests.
+On kazetsukaimiko/freedriver-web the Security Review check runs for every same-repo pull request to main, on open, synchronize, and reopen. A green check is the security gate. A red check is the hold. Wait for that check. Do not treat a missing label as a missing check. Do not substitute an approval for the check. A fork head does not run the job. Say so and stop.
+
+Do not spawn the security agent for a pull request. Do not ask that agent to approve a pull request so a ruleset will pass. That agent grooms board issues, and reviews a design, a proposal, or a pull request only when a person asks for that review.
 
 ## Review bodies
 
@@ -139,7 +141,7 @@ When a review body is not a review, the pull request author says so on that revi
 
 ## Re-review
 
-A new push dismisses a prior approval of an older head. Do not spawn the security agent to look again. The `Security Review` check runs on that push. Until the check exists, kazetsukaimiko's approval of the new head is the security gate. Request kazetsukaimiko again only when the pull request has `manual-review` and the `Manual review` section names the files.
+A new push dismisses a prior approval of an older head. The Security Review check runs on that push. Do not spawn the security agent to look again. Request kazetsukaimiko again only when the pull request has `manual-review` and the `Manual review` section names the files.
 
 ## Merge
 
@@ -147,7 +149,7 @@ Merge only when all of these are true:
 
 - The host facts say the agent merges this pull request.
 - `manual-review` is either absent, or kazetsukaimiko has approved this head and the body names the files.
-- The security gate for this head is met: the `Security Review` check is green, or that check does not exist yet and kazetsukaimiko has approved this head.
+- The security gate for this head is met: the `Security Review` check is green. On kazetsukaimiko/freedriver-web that check runs for every same-repo pull request. Do not merge while it is red or still running.
 - The required reviewer has approved, and has not said to hold the merge.
 - The comment census is current, and every thread is settled. Run the census again after the approval, before the merge.
 - Fetch again. `HEAD` contains the integration tip you just fetched, and that tip is the pull request’s base.

@@ -52,8 +52,8 @@ Then start the loop again from the read. Stop when every remaining open item is 
 
 Labels document the gate. The merger enforces it. GitHub does not.
 
-- Do not spawn `security` to review a pull request. The security agent grooms tickets only.
-- `security-review` is satisfied by a green `Security Review` check on the head. Until that check exists, kazetsukaimiko's approval of the head satisfies it. A new push needs that approval again. Do not spawn security for the new head.
+- Do not spawn `security` to review a pull request, and do not ask that agent to approve one so a ruleset will pass. The security agent grooms board issues, and reviews a design, a proposal, or a pull request only when a person asks.
+- The `security-review` label is obsolete. Do not add it. Remove it if it is present. It does not control the Security Review job. On kazetsukaimiko/freedriver-web that check runs for every same-repo pull request to main. A green check is the security gate. A red check is the hold. Wait for it. Do not substitute an approval for the check.
 - `manual-review` is rare. The pull request body must have a `Manual review` section that names the files and why only kazetsukaimiko can decide. If that section is missing, remove the label and merge without that review. Touching auth is not a reason.
 - A workflow-file change that returns 403 stays open for kaze. Do not switch accounts.
 - Do not force-push the default branch.
