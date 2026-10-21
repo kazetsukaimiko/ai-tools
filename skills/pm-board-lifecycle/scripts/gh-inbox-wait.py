@@ -54,7 +54,7 @@ while True:
         with urllib.request.urlopen(request, timeout=30) as response:
             notes = json.load(response)
         failures = 0
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError):
+    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
         failures += 1
         if failures >= 5:
             print(json.dumps({"login": login, "error": "notifications request failed"}))
