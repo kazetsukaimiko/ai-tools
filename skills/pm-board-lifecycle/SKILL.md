@@ -34,7 +34,23 @@ Run them in the same pass. Grooming does not wait for the delivery track.
 
 **Delivery.** Spawn one agent per independent ticket or pull request. Do not hand one agent a list of work that can run at the same time. A grooming spawn only comments. A delivery spawn does not edit ticket bodies. A dependency chain stays with one agent, in order. Unrelated tickets, and pull requests that do not share a branch, each get their own agent. Each delivery agent stays with its one pull request until that request merges.
 
-Start at most 10 subagents at once, grooming and delivery together. When one finishes, start the next item that is ready. Ten is how many run at the same time. It is not how much work this pass does. Do not stop while an agent-owned item can still move.
+Start at most 10 subagents at once, grooming and delivery together. A reactor counts toward the 10. An inbox monitor does not. When one subagent finishes, start the next item that is ready. Ten is how many run at the same time. It is not how much work this pass does. Do not stop while an agent-owned item can still move.
+
+## Inbox monitors
+
+While any grooming, delivery, or reactor subagent is running, start one cheap monitor per eligible GitHub login. Eligible logins are the ones named in `~/.grok/agents/*.md`. Skip a login that says it has no GitHub account. `kazetsukaimiko` is not an agent. When none of those subagents are running, stop every monitor. Do not leave one running on an idle board.
+
+The monitor is `scripts/gh-inbox-wait.py` next to this skill, via the monitor tool. Pass the login and an ignore file of thread ids. It polls `GET /notifications` and prints one JSON line when an unread thread is not in the ignore file, then exits. An empty poll prints nothing. It does not mark a thread read.
+
+On that line, do not restart that login's monitor until this hit is finished. The other logins keep their monitors.
+
+- If a live subagent already owns that pull request or issue, remember the thread id, add it to the ignore file, and restart the monitor. Do not spawn a second agent. When the owner exits, resume it with that thread before you give it new work. The resume prompt says this hit woke it.
+- If nobody owns it and a slot is free, spawn one reactor for that thread. `subagent_type` is that login's agent. The prompt names the thread id, reason, and subject URL. Follow the mark-read rule in `gh-agents-react`. Reply on that subject if a reply is due. Do not open a pull request and do not start a second ticket. If the thread needs new work, leave a board comment and leave the thread unread when you cannot act. Mark it read only after the reply, the board note, or an explicit nothing-to-do.
+- If no slot is free, add the thread id to the ignore file, remember it, and restart the monitor. Spawn the reactor when a slot frees.
+
+Tell every delivery subagent: do not poll GitHub while you wait on a review. The lifecycle monitor resumes you. That waives your own poll because this pass watches the inbox for you. Keep working on the one ticket you were given.
+
+Do not run `/gh-agents-react` on each pass. That sweep is for a session with no live owners.
 
 ## Delivery order
 
