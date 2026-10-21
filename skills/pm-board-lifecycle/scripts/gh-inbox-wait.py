@@ -26,7 +26,7 @@ interval = int(os.environ.get("GH_INBOX_INTERVAL", "30"))
 
 memory = os.path.expanduser("~/.claude/memory/gh-multi-account.md")
 text = open(memory).read()
-match = re.search(rf"(?m)^{re.escape(login)}: (ghp_\S+)", text)
+match = re.search(rf"(?m)^- {re.escape(login)}: (ghp_\S+)", text)
 if not match:
     print(json.dumps({"login": login, "error": "no token entry"}))
     sys.exit(1)
