@@ -113,7 +113,7 @@ Repeat until the pull request is merged or the obligation has ended.
 2. Census comments. Settle any unsettled thread before you request review or merge. A code change goes through [Sync before every push](#sync-before-every-push) and [CI for this SHA](#ci-for-this-sha).
 3. Watch CI for the current SHA.
 4. When CI is red, fix it on this branch and return to step 1.
-5. When CI is green and every thread is settled, mark the pull request ready if it is still a draft, and request the labeled reviewers under [Review labels](#review-labels) in that same action. Marking ready without those requests is not done. A push that answers requested changes also re-requests those reviewers under [Re-review](#re-review) in that same pass. Record the requests so a later pass does not repeat a request that already notified them about this SHA. A request that the server rejects is not a success. Say so on the pull request once, and keep the pull request open.
+5. When CI is green and every thread is settled, mark the pull request ready if it is still a draft. Request kazetsukaimiko only when `manual-review` is present and the body names the files. Do not request lonewatt-security. Do not spawn the security agent. The security gate is [Review labels](#review-labels).
 6. Keep looping. A new comment, a new push, a moved integration tip, a merged dependency, or a check that goes red returns to step 1.
 7. Merge only under [Merge](#merge).
 
@@ -123,13 +123,13 @@ When a check stays pending past a bound the host names, or past roughly 30 minut
 
 ## Review labels
 
-Two labels decide who is requested when a pull request leaves draft. Apply the label while the pull request is still a draft, before the ready step. The ready step is not finished until each labeled reviewer has a live review request.
+A pull request with no `manual-review` label merges without kazetsukaimiko. Do not request that account. Do not wait for that account. GitHub may still block on CODEOWNERS until those paths are narrowed. That is a ruleset fact, not a reason to add the label.
 
-- `security-review` means request `lonewatt-security` and do not merge until that account approves the head. A ticket +1 is not that approval. Put this label on a pull request that changes behavior, auth, data, deploy, or runtime config, unless the ticket says this pull request does not need it.
-- `manual-review` means request `kazetsukaimiko` and do not merge until that account approves the head. Security adds this during grooming only when the risk needs kaze. Most pull requests do not have it. A pull request without it does not wait for kaze.
-- Request both when both labels are present. One person’s approval does not clear the other label.
-- CODEOWNERS is a separate gate. It does not replace either label, and neither label replaces it.
-- If the request returns an error, including 422 because that account is not a collaborator, the request did not happen. Say so once on the pull request. Do not merge to get past it.
+`manual-review` is rare. Add it only when the pull request body has a `Manual review` section that names the files and the reason only kazetsukaimiko can decide. Touching auth is not that reason. If the label is present and the section is missing, remove the label and merge without that review.
+
+`security-review` is not a request to spawn the security agent. Once the `Security Review` check exists on the head, a green run is the security gate and a red run is the hold. Do not spawn security for the pull request. Until that check exists, kazetsukaimiko's approval of the head satisfies `security-review` for that head. A new push that dismisses the approval needs that approval again. Do not spawn the security agent to replace it.
+
+The security agent grooms the board. It does not review pull requests.
 
 ## Review bodies
 
@@ -139,18 +139,15 @@ When a review body is not a review, the pull request author says so on that revi
 
 ## Re-review
 
-Pushing a fix for a reviewer's requested changes does not notify them. An old review request that is still open does not notify them either. A comment that only answers the thread does not notify them.
-
-In the same pass as that push, request the reviewer again on the new head. When the account is already in the requested-reviewer list, remove that request and add it again. Do this for `lonewatt-security` when the label is `security-review`, and for `kazetsukaimiko` when the label is `manual-review`. A previous approval of an older head does not count.
-
-A GitHub review request does not wake the security agent. In that same pass, spawn the security agent with the pull request URL, the new head SHA, and the review it is answering. One pull request per spawn. Do not hand one security agent a list of unrelated pull requests. Do not wait for the agent to notice a request on its own.
+A new push dismisses a prior approval of an older head. Do not spawn the security agent to look again. The `Security Review` check runs on that push. Until the check exists, kazetsukaimiko's approval of the new head is the security gate. Request kazetsukaimiko again only when the pull request has `manual-review` and the `Manual review` section names the files.
 
 ## Merge
 
 Merge only when all of these are true:
 
 - The host facts say the agent merges this pull request.
-- Every labeled reviewer in [Review labels](#review-labels) has approved the head, and has not said to hold the merge. A pull request with no `security-review` or `manual-review` label does not wait on those accounts.
+- `manual-review` is either absent, or kazetsukaimiko has approved this head and the body names the files.
+- The security gate for this head is met: the `Security Review` check is green, or that check does not exist yet and kazetsukaimiko has approved this head.
 - The required reviewer has approved, and has not said to hold the merge.
 - The comment census is current, and every thread is settled. Run the census again after the approval, before the merge.
 - Fetch again. `HEAD` contains the integration tip you just fetched, and that tip is the pull request’s base.
