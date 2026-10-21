@@ -10,7 +10,7 @@ You own a pull request from the moment you open it until it is merged, or until 
 
 Opening the pull request, pushing, requesting review, and receiving approval are steps in the loop. None of them finishes the work. A later task in the same session does not finish it either. Keep the loop running while you do that other work.
 
-If a subagent opens the pull request, that subagent keeps this obligation until it ends. The session that dispatched it also keeps the obligation. A subagent that returns while the pull request is open has not finished. The dispatcher resumes the loop in the same turn.
+If a subagent opens the pull request, that subagent keeps this obligation until it ends, unless the dispatch prompt waived a part of it and stated the reason. The session that dispatched it also keeps whatever was not waived. A subagent that returns while the pull request is open, without that waiver, has not finished. The dispatcher resumes the loop in the same turn.
 
 ## Dispatch
 
@@ -18,7 +18,7 @@ When more than one pull request or ticket is in play, spawn one subagent per ite
 
 A dependency chain stays with one subagent, in order. That subagent checks the dependency on every pass under [Dependencies](#dependencies). Two edits that share a branch stay with one subagent.
 
-The session that dispatched them still owns each pull request when a subagent returns. A dispatch prompt does not waive this file. "Return the URL", "do not merge", "stop when ready", and "do not wait" do not end the obligation. Waiting for a requested reviewer is the loop. Poll until that reviewer has approved the current head. Then merge when the other merge gates pass and this account is allowed to merge. An HTTP 403 on a workflow file does not end the obligation. Report the 403 and keep watching until the pull request is merged.
+The session that dispatched them still owns each pull request when a subagent returns. A dispatch prompt may waive part of this file only when it states what is waived and the reason. "Return the URL", "do not merge", "stop when ready", and "do not wait" do not name a reason, so they do not waive anything. Without a stated reason, waiting for a requested reviewer is the loop. Poll until that reviewer has approved the current head. Then merge when the other merge gates pass and this account is allowed to merge. An HTTP 403 on a workflow file is not a reason to stop watching. Report the 403 and keep watching until the pull request is merged, unless the prompt waived that watch and said why.
 
 If the session ends while the pull request is open, the next session in that repo resumes it. See [Session boundaries](#session-boundaries).
 
@@ -187,4 +187,4 @@ Also resume a pull request the user names, and any open pull request on the bran
 
 The obligation ends when the pull request is merged and any host post-merge check has succeeded, or when you close the pull request because the user told you to stop or the change is superseded. A close includes a pull-request comment that says why.
 
-A red CI run, a review you disagree with, a session that is about to end, a new task from the user, and a dispatch instruction to return or stop do not end the obligation. Waiting on an approval does not end it either.
+A red CI run, a review you disagree with, a session that is about to end, and a new task from the user do not end the obligation. A dispatch instruction ends it only for the part it names, and only when it gives the reason. Waiting on an approval does not end it unless that waiver says why the wait stops.
