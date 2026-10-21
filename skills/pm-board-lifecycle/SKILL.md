@@ -4,7 +4,7 @@ description: >
   Drain the Freedriver.io Remote Control board until every agent-owned item is Done.
   Verify each owner's tickets and pull requests, groom in parallel toward Todo, then
   resume In Review, In Progress, and Todo without stacked pull requests, and only
-  then revisit Blocked. Use when the user runs /pm-board-lifecycle, says to drain
+  then revisit Dependent on Other Tickets. Needs Intervention waits for kazetsukaimiko. Use when the user runs /pm-board-lifecycle, says to drain
   the board, delegate board work, or keep going until the board is Done.
 ---
 
@@ -62,7 +62,7 @@ Do not run `/gh-agents-react` on each pass. That sweep is for a session with no 
 
 4. **Todo.** An open In Review or In Progress pull request does not block unrelated Todo work. Pick up every Todo ticket that owner can start. Skip one whose predecessor is unfinished, and skip one that would add commits to an open pull request or stack a second pull request on that branch. Independent tickets run in parallel, one worktree each. Same dependency chain, one pull request at a time. Different owners may work at the same time.
 
-5. **Blocked.** When those three buckets have nothing left they can move, re-read their Blocked tickets. If the blocker is gone, say so. The project manager moves it to Todo, or to Done when the deliverable is already on the board. If it is still blocked, leave it and name the blocker. Do not delete data or force a merge to clear a hold.
+5. **Dependent on Other Tickets.** When those three buckets have nothing left they can move, re-read this column. If the predecessor is done, move the card to Todo, or to Done when the deliverable is already on the board. If the predecessor is still open, leave it and name that ticket. **Needs Intervention** stays until kazetsukaimiko acts. Do not delete data or force a merge to clear a hold.
 
 Then start the loop again from the read. Stop when every remaining open item is a Running Epic, Done, a leave-alone ticket, or blocked on kaze or a named host fact the agents cannot change. Report that remainder. Do not stop just because one spawn returned.
 
