@@ -34,11 +34,15 @@ Run them in the same pass. Grooming does not wait for the delivery track.
 
 **Delivery.** Spawn one agent per independent ticket or pull request. Do not hand one agent a list of work that can run at the same time. A grooming spawn only comments. A delivery spawn does not edit ticket bodies. A dependency chain stays with one agent, in order. Unrelated tickets, and pull requests that do not share a branch, each get their own agent. Each delivery agent stays with its one pull request until that request merges.
 
+**Comments.** Tell every spawn that writes on GitHub: a comment adds only the new fact. It states the current result and the next action, and names who does it. It does not recap a decision already in the body. Leave out work that was not done, checks that were skipped, command lists, earlier stamps, and history already on the ticket. A missing fact is included only when it is the block.
+
+**Doctrines.** The source is lonewatt-ops `policies/product/board-norms.md`. Kaze sets one on the epic. Children inherit it. A ticket with no epic is not groomed. Ship it withholds a security +1 only for a new unauthenticated door, or for leaving the water inlet on while the water tank is on. Standard withholds for a real threat in the change, not for a steady-state preference. Enterprise waits for a design review before implementation. A question from kaze is an inquiry. Do not move the board until kaze picks the action. A decision that needs kazetsukaimiko is a ticket assigned to that user.
+
 Start at most 10 subagents at once, grooming and delivery together. A reactor counts toward the 10. An inbox monitor does not. When one subagent finishes, start the next item that is ready. Ten is how many run at the same time. It is not how much work this pass does. Do not stop while an agent-owned item can still move.
 
 ## Inbox monitors
 
-While any grooming, delivery, or reactor subagent is running, start one cheap monitor per eligible GitHub login. Eligible logins are the ones named in `~/.grok/agents/*.md`. Skip a login that says it has no GitHub account. `kazetsukaimiko` is not an agent. When none of those subagents are running, stop every monitor. Do not leave one running on an idle board.
+At the start of a session that runs this skill, start one cheap monitor per eligible GitHub login and keep it up until the user exits the session. Eligible logins are the ones named in `~/.grok/agents/*.md`. Skip a login that says it has no GitHub account. `kazetsukaimiko` is not an agent. An idle board does not stop the monitors. When a monitor exits, handle the hit and start that login's monitor again.
 
 The monitor is `scripts/gh-inbox-wait.py` next to this skill, via the monitor tool. Pass the login and an ignore file of thread ids. It polls `GET /notifications` and prints one JSON line when an unread thread is not in the ignore file, then exits. An empty poll prints nothing. It does not mark a thread read.
 
