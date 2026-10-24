@@ -27,7 +27,7 @@ Each tool lives in its own directory with a short human README (and often a `SKI
 | [**safesudo**](security/safesudo/) | Agents elevate via **polkit** (`pkexec`) only; blocks classic elevators; optional **session stamp** so keep survives new agent shells (~5 min), not just same-process `AUTH_ADMIN_KEEP`. |
 | [**security items**](security/items/) | The checklist itself (browser defaults/plugins, Flatpak, firewall, NTP, …) — `ITEM.md` + optional `check.sh` per control. |
 | [**SDLC mandates**](sdlc/) | Process contracts a host `AGENTS.md` can cite. [PR follow-through](sdlc/pr-follow-through/MANDATE.md): own every PR until merge, sync the remote base before each push, reply on every review surface. Skill: [`/pr-follow-through`](skills/pr-follow-through/). |
-| [**Agent roster**](agent_roles/) | Grok Build seats: onboarding, project manager, security, yuni, techops, and sysadmin. Logins and machine paths stay in a local identity file. |
+| [**Agent roster**](agent_roles/) | Moved to [lonewatt-ops](https://github.com/kazetsukaimiko/lonewatt-ops/tree/main/agent_roles). This directory is the pointer. |
 
 More tools will land under other folders as we share them. Prefer **one concern per directory**, add a row here, and keep install details in that tool’s own README.
 
