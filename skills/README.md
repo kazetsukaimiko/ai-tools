@@ -9,6 +9,7 @@ Agent skills (Grok / Claude-compatible `SKILL.md` packages) that ship with this 
 | [pr-follow-through](pr-follow-through/) | **`/pr-follow-through`** | Load the [PR follow-through mandate](../sdlc/pr-follow-through/MANDATE.md) and own the pull request until it merges |
 | [pm-board-lifecycle](pm-board-lifecycle/) | **`/pm-board-lifecycle`** | Drain the board. One subagent per independent ticket or pull request. Dependencies stay serial |
 | [gh-agents-react](gh-agents-react/) | **`/gh-agents-react`** | Each GitHub agent reads its unread notifications and open review requests, acts, then marks handled threads read |
+| [arch-design](arch-design/) | **`/arch-design`** | Architectural design as two documents: interfaces, contracts, and code flow, then implementation. One pull request |
 
 ## Load in Grok
 
