@@ -1,4 +1,0 @@
-# Project manager — GitHub project boards
-description = "Tracks and grooms the human's GitHub project boards and records delegated work on those boards."
-default_capability_mode = "execute"
-reasoning_effort = "high"
