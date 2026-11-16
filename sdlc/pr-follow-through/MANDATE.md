@@ -29,8 +29,8 @@ If the session ends while the pull request is open, the next session in that rep
 | Integration branch | The pull request’s base branch, fetched from the remote that holds it. Before the pull request exists, the remote default branch (`upstream/HEAD` when an `upstream` remote exists, otherwise `origin/HEAD`). A local `master` or `main` counts only after this fetch has updated it. |
 | Account | The GitHub account this repo already uses for pull requests and replies. |
 | Draft | Follow the host’s existing practice. |
-| Required reviewer | Unnamed. Do not invent one. Do not merge on your own approval. |
-| Who merges | A person. Watch until the pull request is merged. |
+| Required reviewer | Whoever the forge requests (CODEOWNERS and the branch ruleset). Do not invent one. Do not merge on your own approval. |
+| Who merges | The account that opened the pull request. |
 | Post-merge check | None. |
 
 Read the host facts from the host `AGENTS.md` at the start of the loop, and again before merge.
@@ -113,7 +113,7 @@ Repeat until the pull request is merged or the obligation has ended.
 2. Census comments. Settle any unsettled thread before you request review or merge. A code change goes through [Sync before every push](#sync-before-every-push) and [CI for this SHA](#ci-for-this-sha).
 3. Watch CI for the current SHA.
 4. When CI is red, fix it on this branch and return to step 1.
-5. When CI is green and every thread is settled, mark the pull request ready if it is still a draft. Request kazetsukaimiko only when `manual-review` is present and the body names the files. Do not request the security agent. Do not spawn the security agent. The security gate is [Review labels](#review-labels).
+5. When CI is green and every thread is settled, mark the pull request ready if it is still a draft. Request only the reviewers the forge requests. Do not request or spawn the security agent. The security gate is [Review labels](#review-labels).
 6. Keep looping. A new comment, a new push, a moved integration tip, a merged dependency, or a check that goes red returns to step 1.
 7. Merge only under [Merge](#merge).
 
@@ -123,9 +123,7 @@ When a check stays pending past a bound the host names, or past roughly 30 minut
 
 ## Review labels
 
-A pull request with no `manual-review` label merges without kazetsukaimiko. Do not request that account. Do not wait for that account. GitHub may still block on CODEOWNERS until those paths are narrowed. That is a ruleset fact, not a reason to add the label.
-
-`manual-review` is rare. Add it only when the pull request body has a `Manual review` section that names the files and the reason only kazetsukaimiko can decide. Touching auth is not that reason. If the label is present and the section is missing, remove the label and merge without that review.
+`manual-review` marks a pull request the forge will not merge without kazetsukaimiko: it changes a path they own in CODEOWNERS, or its body has a `Manual review` section naming a choice only they can make. The author adds it when the forge requests kazetsukaimiko and removes it when that request is gone. Without it, do not request or wait for that account.
 
 The `security-review` label is obsolete. Do not add it. If it is present, remove it. It does not start, stop, or gate the Security Review job.
 
@@ -141,14 +139,14 @@ When a review body is not a review, the pull request author says so on that revi
 
 ## Re-review
 
-A new push dismisses a prior approval of an older head. The Security Review check runs on that push. Do not spawn the security agent to look again. Request kazetsukaimiko again only when the pull request has `manual-review` and the `Manual review` section names the files.
+A new push dismisses a prior approval of an older head. The Security Review check runs on that push. Do not spawn the security agent to look again. Request kazetsukaimiko again only when the pull request has `manual-review`.
 
 ## Merge
 
 Merge only when all of these are true:
 
 - The host facts say the agent merges this pull request.
-- `manual-review` is either absent, or kazetsukaimiko has approved this head and the body names the files.
+- `manual-review` is either absent, or kazetsukaimiko has approved this head.
 - The security gate for this head is met: the `Security Review` check is green. On kazetsukaimiko/freedriver-web that check runs for every same-repo pull request. Do not merge while it is red or still running.
 - The required reviewer has approved, and has not said to hold the merge.
 - The comment census is current, and every thread is settled. Run the census again after the approval, before the merge.
